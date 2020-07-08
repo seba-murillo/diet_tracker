@@ -10,34 +10,32 @@
 
 #include <ctime>
 #include <string>
-#include <unordered_map>
+#include <map>
+#include "common.h"
 #include "Food.h"
+#include "Date.h"
 
-typedef unsigned short us;
+using namespace std;
 
-namespace std {
-	struct date_structure{
-		us day;
-		us month;
-		us year;
-	};
-	class Day{
-		private:
-			//https://thispointer.com/unordered_map-usage-tutorial-and-example/
-			unordered_map<Food*, float> day_food_map;
-			struct date_structure date;
-		public:
-			Day(us day, us month, us year);
-			virtual ~Day();
-			bool addFood(Food* food, float amount);
-			bool setFood(Food* food, float amount);
-			bool delFood(Food* food);
-			date_structure getDate();
-			float getCals();
-			void print();
-			void save();
-			string getName();
-	};
-}/* namespace std */
+class Day{
+private:
+	void load();
+	bool loaded = false;
+	map<Food*, float> day_food_map;
+	Date date;
+public:
+	Day(us day, us month, us year);
+	virtual ~Day();
+	bool addFood(Food* food, float amount);
+	bool setFood(Food* food, float amount);
+	bool delFood(Food* food);
+	date_structure getDate();
+	float getKcals();
+	void print();
+	void save();
+	string getName();
+};
+
+bool day_exists(Date date);
 
 #endif /* DAY_H_ */

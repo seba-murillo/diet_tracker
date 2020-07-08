@@ -10,52 +10,47 @@
 #include <iomanip>
 #include <fstream>
 #include <string>
+#include <map>
 #include <sys/stat.h>
 //#include <libxls/xls.h>
 #include "readline/readline.h"
 #include "readline/history.h"
 #include "Screen.h"
 #include "Day.h"
+#include "common.h"
 #include "Food.h"
-
-#define verbose 1
-#define FILENAME_PROFILE ".profile"
-#define FILENAME_WEIGHTS ".weights"
-#define FILENAME_FOOD_DATA ".food_data"
-#define FILENAME_FOOD_SPREADSHEET "food_data.ods"
 
 using namespace std;
 // TODO
 /*
-	-> time system
-	void show_weights()
-	show_streak()
-	load_spreadsheet()
-	void get_BMR()
-	void get_TDEE()
-	void get_average()
-	void get_age()
-	void command_add()
-	void command_set()
-	void command_remove()
-	void command_weight()
-	void command_BMR()
-	void command_TDEE()
-	void command_average()
-	void command_last()
-	void command_weights()
-	void command_help()
-	void command_profile()
-	void command_foodlist()
-	void command_show()
-*/
+ food -> load from spreadsheet
+
+ load_spreadsheet()
+
+ show_streak()
+
+ us get_TDEE() -> measured
+ us get_average();
+
+ void command_add()
+ void command_set()
+ void command_remove()
+ void command_weight()
+ void command_BMR()
+ void command_TDEE()
+ void command_average()
+ void command_last()
+ void command_weights()
+ void command_help()
+ void command_profile()
+ void command_foodlist()
+ void command_show()
+ */
 
 void process_command(string command);
 void screen_test();
-bool isValidDate(us day, us month, us year);
 
-// TODO
-void init_files(); // folders and stuff
+void init_files(); //
 bool load_spreadsheet(); //
 bool load_foodfile(); //
 bool load_profile(); //
@@ -72,10 +67,9 @@ bool save_profile(); //
 bool save_weighfile();
 
 // calc
-void get_BMR();
-void get_TDEE();
-void get_average();
-void get_age();
+us get_BMR();
+us get_TDEE();
+us get_average(us days);
 
 // other
 void create_profile();
@@ -95,16 +89,8 @@ void command_profile();
 void command_foodlist();
 void command_show();
 
-struct profile_structure{
-		struct date_structure date;
-		us height = 0;
-		us weight = 0;
-		char S = '?';
-		float M = 1.0;
-		us target_macros[3] = {0, 0, 0};
-} profile;
-
-unordered_map<string, float> weight_map;
+map<string, float> weight_map;
+struct profile_structure profile;
 
 int main(int argc, char** argv){
 	cout << "Hey there!" << endl;
@@ -116,9 +102,9 @@ int main(int argc, char** argv){
 		cout << COLOR_FAIL << BOLD << TAB << "foodfile not found" << ENDL;
 		exit(EXIT_FAILURE);
 	}
-/*
-	if(!load_profile()) create_profile();
-	*/
+	/*
+	 if(!load_profile()) create_profile();
+	 */
 	// main loop
 	char* command;
 	while((command = readline("> ")) != nullptr){
@@ -130,28 +116,6 @@ int main(int argc, char** argv){
 	}
 	return EXIT_SUCCESS;
 }
-
-/*
-commands:
-	add
-	set
-	remove
-	weight
-
-	bmr
-	tdee
-
-	average
-	last
-	weights
-	help
-	profile
-	foodlist
-
-	show || list || ls
-	clear
-	exit || q
-*/
 
 void process_command(string command){
 	cout << "process_command: [" << command << "]" << endl;
@@ -196,21 +160,9 @@ void screen_test(){
 	cout << FAIL << ENDL;
 }
 
-bool isValidDate(us day, us month, us year){
-	if(!(year >= 1900 && year <= 2200)) return false;
-	if(day < 1 || day > 31) return false;
-	if(month == 2){
-		if((year % 100 != 0 && year % 4 == 0) || (year % 400 == 0)){ // leap year
-			if(day > 29) return false;
-		}else if(day > 28) return false;
-	}
-	if(month % 2 == 0 && day > 30) return false;
-	return true;
-}
-
 void init_files(){
-	mkdir("DietTracker", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-	mkdir("DietTracker/days", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+	mkdir(DIRECTORY_MAIN, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+	mkdir(DIRECTORY_MAIN "/" DIRECTORY_DAYS, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
 }
 
 bool save_foodfile(){
@@ -225,18 +177,21 @@ bool save_foodfile(){
 	list<Food*>::iterator food_list_it;
 	file.precision(1);
 	file << fixed;
-	unsigned int count = 1;
-	for(food_list_it = food_list.begin();food_list_it != food_list.end();food_list_it++){
+	Food* food;
+	us count = 1;
+	map<string, Food*>::iterator i;
+	for(i = food_map.begin();i != food_map.end();i++){
+		food = i->second;
 		file << "\t{";
-		file << "\"name\": \"" << (*food_list_it)->name << "\", ";
-		file << "\"alias\": \"" << (*food_list_it)->alias << "\", ";
-		file << "\"unit\": \"" << (*food_list_it)->unit << "\", ";
-		file << "\"serving\": " << (*food_list_it)->serving << ", ";
-		file << "\"kcal\": " << (*food_list_it)->kcal << ", ";
-		file << "\"C\": " << (*food_list_it)->C << ", ";
-		file << "\"F\": " << (*food_list_it)->F << ", ";
-		file << "\"P\": " << (*food_list_it)->P;
-		if(count++ == food_list.size()) file << "},\n";
+		file << "\"name\": \"" << food->name << "\", ";
+		file << "\"alias\": \"" << food->alias << "\", ";
+		file << "\"unit\": \"" << food->unit << "\", ";
+		file << "\"serving\": " << food->serving << ", ";
+		file << "\"kcal\": " << food->kcal << ", ";
+		file << "\"C\": " << food->C << ", ";
+		file << "\"F\": " << food->F << ", ";
+		file << "\"P\": " << food->P;
+		if(count++ == food_map.size()) file << "},\n";
 		else file << "}\n";
 	}
 	file << "]\n}";
@@ -276,18 +231,6 @@ bool load_foodfile(){
 
 bool load_spreadsheet(){
 	return true;
-}
-
-string extract(string source, string start, string end){
-	if(source.empty()) return string();
-	int pos1, pos2;
-	pos1 = source.find(start);
-	if(pos1 == -1) return string();
-	pos1 += start.length();
-	pos2 = (source.substr(pos1)).find(end);
-	if(pos2 == -1) return string();
-	if(end.empty()) pos2 = source.length();
-	return source.substr(pos1, pos2);
 }
 
 void command_add(){
@@ -363,8 +306,8 @@ void create_profile(){
 	while(true){
 		cout << TAB << "1. enter your birth date (dd/mm/yyyy): ";
 		cin >> input;
-		sscanf(input.c_str(), "%2hu/%2hu/%4hu", &profile.date.day, &profile.date.month, &profile.date.year);
-		if(isValidDate(profile.date.day, profile.date.month, profile.date.year)) break;
+		sscanf(input.c_str(), "%2hu/%2hu/%4hu", &profile.birth.day, &profile.birth.month, &profile.birth.year);
+		if(isValidDate(profile.birth.day, profile.birth.month, profile.birth.year)) break;
 	}
 	while(true){
 		cout << TAB << "2. enter your height (cm): ";
@@ -429,10 +372,7 @@ bool load_profile(){
 	string line;
 	getline(file, line);
 	sscanf(line.c_str(), "{\"birthdate\": \"%2hu/%2hu/%4hu, \"height\": %hu, \"weight\": %hu, \"sex\": %c, "
-			"\"activity\": %f, \"target_C\": %hu, \"target_F\": %hu, \"target_P\": %hu}",
-			&profile.date.day, &profile.date.month, &profile.date.year, &profile.height,
-			&profile.weight, &profile.S, &profile.M, &profile.target_macros[0],
-			&profile.target_macros[1], &profile.target_macros[2]);
+			"\"activity\": %f, \"target_C\": %hu, \"target_F\": %hu, \"target_P\": %hu}", &profile.birth.day, &profile.birth.month, &profile.birth.year, &profile.height, &profile.weight, &profile.S, &profile.M, &profile.target_macros[0], &profile.target_macros[1], &profile.target_macros[2]);
 	file.close();
 	return true;
 }
@@ -445,7 +385,7 @@ bool save_profile(){
 		cout << COLOR_FAIL << "ERROR: could not open [" << filename << "]" << ENDL;
 		return false;
 	}
-	file << "{\"birthdate\": \"" << profile.date.day << "/" << profile.date.month << "/" << profile.date.year << "\",";
+	file << "{\"birthdate\": \"" << profile.birth.day << "/" << profile.birth.month << "/" << profile.birth.year << "\",";
 	file << "\"height\": " << profile.height << ", ";
 	file << "\"weight\": " << profile.weight << ", ";
 	file << "\"sex\": " << profile.S << ", ";
@@ -462,7 +402,7 @@ bool load_weighfile(){
 	ifstream file;
 	file.open(filename, ios::in);
 	if(!file.is_open()) return false;
-	struct date_structure date;
+	//struct date_structure date;
 	string str_date;
 	float W;
 	while(file >> str_date >> W){
@@ -489,7 +429,7 @@ bool save_weighfile(){
 
 // show
 void show_profile(){
-	string format = TAB + TAB + BOLD + COLOR_PROFILE + COLOR_TABLE_BG;
+	string format = string(TAB) + TAB + BOLD + COLOR_PROFILE + COLOR_TABLE_BG;
 	string target = to_string(profile.target_macros[0]) + "-" + to_string(profile.target_macros[1]) + "-" + to_string(profile.target_macros[2]);
 	us align = 25;
 	cout << format << left << setw(align) << "age:" << right << 27 << ENDL;
@@ -503,32 +443,66 @@ void show_profile(){
 }
 
 void show_weights(){
-	/*
-	String d_format = Screen.TAB + Screen.TAB + Screen.COLOR.TABLE_BG.toString() + Screen.COLOR.BOLD.toString();
-	String w_format = Screen.COLOR.RESET.toString() + Screen.COLOR.TABLE_BG.toString() + Screen.COLOR.DATA.toString();
-	for(LocalDate day : weights.keySet()){
-		String dayname = String.format(Screen.COLOR.BOLD.toString() + Screen.COLOR.DAY + "%02d/%02d/%04d", day.getDayOfMonth(), day.getMonth().getValue(), day.getYear());
-		int space = (Screen.LOAD_SPACING + 3);
-		double weight = weights.get(day);
-		if(weight >= 100.0) space--;
-		log(d_format + "%-" + space + "s" + w_format + "%3.1f kg\n", dayname, weight);
+	string date_format = string(TAB) + TAB + BOLD + COLOR_DATE + COLOR_TABLE_BG;
+	string weight_format = string(COLOR_PROFILE) + COLOR_TABLE_BG;
+	for(pair<string, float> weight : weight_map){
+		cout << left << setw(SPACING_DEFAULT) << weight.first << setprecision(1) << weight.second << ENDL;
 	}
-	*/
 }
 
 void show_streak(){
-	/*
-	LocalDate today = getToday();
-	int streak = 0;
-	for(;;streak++){
-		LocalDate date = today.minusDays(streak + 1);
-		Day day = Day.load(date);
-		if(day == null) break;
+	Date date = get_today();
+	for(us streak = 0;;streak++){
+		date = get_previous_day(date);
+		if(day_exists(date)) continue;
+		cout << BOLD << "- current streak: " << COLOR_SYNTAX << streak << " days!" << ENDL;
+		return;
 	}
-	log("- " + Screen.COLOR.BOLD + "current streak: " + Screen.COLOR.SYNTAX + streak + " days!\n");
-	*/
 }
 
+us get_average(us days){
+	Date date = get_today();
+	double kcal = 0;
+	us day;
+	for(day = 1;day <= days;day++){
+		if(!day_exists(date)) break;
+		Day D = Day(date.day, date.month, date.year);
+		kcal += D.getKcals();
+		date = get_previous_day(date);
+	}
+	return (us) (kcal / day);
+}
 
+us get_BMR(){
+	// some online method
+	/*
+	 if(sex == 'F') return (int) (655 + (9.6 * profile.weight) + (1.8 * profile.height) - (4.7 * get_age()));
+	 return (int) (66 + (13.7 * profile.weight) + (5 * profile.height) - (6.8 * get_age()));
+	 */
+	// Mifflin-St Jeor
+	/*
+	 int S = 5;
+	 if(sex == 'F') S = -151;
+	 return (int) (S + (10 * profile.weight) + (6.25 * profile.height) - (5.0 * get_age()));
+	 */
+	// Harris-Benedict
+	if(profile.S == 'F')
+		return (447.593 + (9.247 * profile.weight) + (3.098 * profile.height) - (4.330 * get_age(profile.birth)));
+	return (447.593 + (13.397 * profile.weight) + (3.098 * profile.height) - (4.330 * get_age(profile.birth)));
+}
 
+us get_TDEE(){
+	return (us) (get_BMR() * profile.M);
+}
 
+string extract(string source, string start, string end){
+	if(source.empty()) return string();
+	int pos1, pos2;
+	pos1 = source.find(start);
+	if(pos1 == -1) return string();
+	pos1 += start.length();
+	pos2 = (source.substr(pos1)).find(end);
+	if(pos2 == -1) return string();
+	if(end.empty()) pos2 = source.length();
+	return source.substr(pos1, pos2);
+}

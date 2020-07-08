@@ -31,17 +31,12 @@
 #define COLOR_PROFILE		"\u001B[33m" // yellow
 #define COLOR_SYNTAX		"\u001B[38;5;209m" // orange
 #define COLOR_TABLE_BG		"\u001B[48;5;234m" // grey BG
+#define COLOR_DATE			"\u001B[36m" // cyan
+// spacing
+#define SPACING_DEFAULT		30
 // other
 #define CLEAR_LINES	50
 
-
-namespace std {
-	class Screen{
-		public:
-			Screen();
-			virtual ~Screen();
-	};
-
-}/* namespace std */
+using namespace std;
 
 #endif /* SCREEN_H_ */
