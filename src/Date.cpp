@@ -98,7 +98,8 @@ Date get_today(){
 }
 
 us get_age(Date birth){
-	struct tm struct_B;;
+	if(!isValidDate(birth)) return 0;
+	struct tm struct_B;
 	struct_B.tm_sec = 0;
 	struct_B.tm_min = 0;
 	struct_B.tm_hour = 0;
@@ -126,5 +127,9 @@ bool isValidDate(us day, us month, us year){
 	}
 	if(month % 2 == 0 && day > 30) return false;
 	return true;
+}
+
+bool isValidDate(Date date){
+	return isValidDate(date.day, date.month, date.year);
 }
 

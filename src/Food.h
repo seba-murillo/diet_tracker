@@ -8,7 +8,8 @@
 #ifndef FOOD_H_
 #define FOOD_H_
 
-#define EMPTY_ALIAS "<none>"
+#define MAX_FOODNAME_SIZE	50
+#define EMPTY_ALIAS 		"<none>"
 
 #include <string>
 #include <list>
@@ -18,7 +19,7 @@ using namespace std;
 
 class Food{
 private:
-
+	static Food* find_by_alias(string foodname);
 public:
 	Food(string name, string alias, string unit, float serving, float kcal, float C, float F, float P);
 	string name, alias, unit;
@@ -31,11 +32,13 @@ public:
 	string getUnit();
 	void print();
 	void setAlias(string alias);
+	static void print_all();
+	static Food* find_food(string foodname);
 };
 
 extern map<string, Food*> food_map;
 extern map<string, Food*> alias_map;
-Food* find_food(string foodname);
+
 
 
 namespace std {

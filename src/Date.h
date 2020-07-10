@@ -21,6 +21,7 @@ Date get_next_day(Date date);
 Date get_today();
 us get_age(Date birth);
 bool isValidDate(us day, us month, us year);
+bool isValidDate(Date date);
 bool is_leapyear(us year);
 
 //double get_time_since(Date date);

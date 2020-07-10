@@ -11,19 +11,24 @@
 #include "Screen.h"
 #include "Day.h"
 
+#define TABLE_SPACING_NAME		25
+#define TABLE_SPACING_AMOUNT	10
+#define TABLE_SPACING_NUMBERS	7
+
 using namespace std;
 
 void Day::load(){
-	string filename = to_string(date.year) + "_" + to_string(date.month) + "_" + to_string(date.day);
+	string filename = string(DIRECTORY_MAIN "/" DIRECTORY_DAYS "/") + to_string(date.year) + "_" + to_string(date.month) + "_" + to_string(date.day);
 	ifstream file;
 	file.open(filename, ios::in);
 	if(!file.is_open()) return;
 	string line, name;
-	us amount;
+	float amount;
 	while(getline(file, line)){
+		if(line == "{" || line == "}") continue;
 		name = extract(line, "\"", "\"");
-		amount = stoi(extract(line, ": ", ","));
-		Food* food = find_food(name);
+		amount = stod(extract(line, ": ", ","));
+		Food* food = Food::find_food(name);
 		if(food == nullptr){
 			cout << TAB << TAB COLOR_SYNTAX << "WARNING: '" << name << "' (" << amount << ") not found in database, skipping..." << ENDL;
 			continue;
@@ -31,18 +36,18 @@ void Day::load(){
 		day_food_map.insert( {food, amount});
 	}
 	file.close();
-	loaded = 1;
 }
 
 void Day::save(){
-	string filename = to_string(date.year) + "_" + to_string(date.month) + "_" + to_string(date.day);
+	string filename = string(DIRECTORY_MAIN "/" DIRECTORY_DAYS "/") + to_string(date.year) + "_" + to_string(date.month) + "_" + to_string(date.day);
 	ofstream file;
 	file.open(filename, ios::out);
-	file << "{";
+	file << "{\n";
 	unsigned int count = 1;
 	for(pair<Food*, float> food : day_food_map){
-		file << "\"" + food.first->name + "\": " + to_string(food.second);
-		if(count++ != day_food_map.size()) cout << ",";
+		file << "\"" + food.first->name + "\": ";
+		file << food.second;
+		if(count++ != day_food_map.size()) file << ",";
 		file << "\n";
 	}
 	file << "}";
@@ -56,35 +61,45 @@ Day::Day(us day, us month, us year){
 	load();
 }
 
-Day::~Day(){
-
+Day::Day(Date date){
+	this->date.day = date.day;
+	this->date.month = date.month;
+	this->date.year = date.year;
+	load();
 }
 
-bool Day::addFood(Food* food, float amount){
+bool Day::add_food(Food* food, float amount){
+	if(food == nullptr) return false;
 	if(day_food_map.find(food) == day_food_map.end()){
 		day_food_map.insert( {food, amount});
+		save();
 		return true;
 	}
 	day_food_map[food] += amount;
-	return false;
+	save();
+	return true;
 }
 
-bool Day::setFood(Food* food, float amount){
+bool Day::set_food(Food* food, float amount){
+	if(food == nullptr) return false;
 	if(day_food_map.find(food) == day_food_map.end()) return false;
 	day_food_map.insert( {food, amount});
+	save();
 	return true;
 }
 
-bool Day::delFood(Food* food){
+bool Day::del_food(Food* food){
+	if(food == nullptr) return false;
 	if(day_food_map.erase(food) == 0) return false;
+	save();
 	return true;
 }
 
-date_structure Day::getDate(){
+date_structure Day::get_date(){
 	return this->date;
 }
 
-float Day::getKcals(){
+float Day::get_kcals(){
 	float total = 0;
 	for(pair<Food*, float> food : day_food_map){
 		total += food.first->kcal * (food.second / food.first->serving);
@@ -93,76 +108,80 @@ float Day::getKcals(){
 }
 
 void Day::print(){
+	cout << "> foods of " COLOR_DAY BOLD << this->get_name() << ":" << ENDL;
 	if(day_food_map.empty()){
 		cout << TAB << "no foods logged" << ENDL;
 		return;
 	}
-	float total[] = {0, 0, 0, 0}; // {kcal, C, P ,F}
-	float left[] = {0, 0, 0, 0};
+	float table_total[] = {0, 0, 0, 0}; // {kcal, C, P ,F}
+	float table_left[] = {0, 0, 0, 0};
 	unsigned int count = 1;
 	cout << setprecision(0);
-	cout << BOLD << UNDERLINE;
-	cout << setw(25) << "food";
-	cout << setw(10) << "amount";
-	cout << setw(5) << "kcal";
-	cout << setw(5) << "C";
-	cout << setw(5) << "F";
-	cout << setw(5) << "P";
-	for(pair<Food*, float> food : day_food_map){
+	cout << TAB TAB COLOR_TABLE_BG UNDERLINE BOLD;
+	cout << left << setw(TABLE_SPACING_NAME) << "food";
+	cout << left << setw(TABLE_SPACING_AMOUNT) << "amount";
+	cout << right << setw(TABLE_SPACING_NUMBERS) << "kcal";
+	cout << right << setw(TABLE_SPACING_NUMBERS) << "C";
+	cout << right << setw(TABLE_SPACING_NUMBERS) << "F";
+	cout << right << setw(TABLE_SPACING_NUMBERS) << "P";
+	cout << ENDL;
+	for(auto map_row : day_food_map){
+		cout << TAB TAB COLOR_TABLE_BG;
 		if(count++ == day_food_map.size()) cout << UNDERLINE;
-		float mult = food.second / food.first->serving;
-		string amount = "(" + to_string(food.second) + " " + food.first->unit + ")";
-		cout << TAB << TAB << COLOR_TABLE_BG << left;
-		cout << setw(25) << food.first->name;
-		cout << setw(10) << amount;
-		cout << right;
-		cout << setw(5) << food.first->kcal * mult;
-		cout << setw(5) << food.first->C * mult;
-		cout << setw(5) << food.first->F * mult;
-		cout << setw(5) << food.first->P * mult;
+		Food* food = map_row.first;
+		float mult = map_row.second / food->serving;
+		string amount = "(" + to_string((us) map_row.second) + " " + food->unit + ")";
+		cout << left << setw(TABLE_SPACING_NAME) << food->name;
+		cout << left << setw(TABLE_SPACING_AMOUNT) << amount;
+		cout << right << setw(TABLE_SPACING_NUMBERS) << food->kcal * mult;
+		cout << setw(TABLE_SPACING_NUMBERS) << food->C * mult;
+		cout << setw(TABLE_SPACING_NUMBERS) << food->F * mult;
+		cout << setw(TABLE_SPACING_NUMBERS) << food->P * mult;
 		cout << ENDL;
-		total[0] += food.first->kcal * mult;
-		total[1] += food.first->C * mult;
-		total[2] += food.first->F * mult;
-		total[3] += food.first->P * mult;
+		table_total[0] += food->kcal * mult;
+		table_total[1] += food->C * mult;
+		table_total[2] += food->F * mult;
+		table_total[3] += food->P * mult;
 	}
 	// get left
 	for(int i = 0;i < 4;i++){
-		left[i] = profile.target_macros[i] - total[i];
+		table_left[i] = profile.target_macros[i] - table_total[i];
 	}
-	// print total
-	cout << TAB << TAB << COLOR_TABLE_BG << left << COLOR_TABLE_TOTAL << BOLD;
-	cout << setw(25) << "TOTAL";
-	cout << setw(10) << "";
-	cout << setw(5) << to_string(total[0]);
-	cout << setw(5) << to_string(total[1]);
-	cout << setw(5) << to_string(total[2]);
-	cout << setw(5) << to_string(total[3]);
-	// print target
-	cout << TAB << TAB << COLOR_TABLE_BG << left << COLOR_TABLE_TARGET << BOLD;
-	cout << setw(25) << "TARGET";
-	cout << setw(10) << "";
-	cout << setw(5) << to_string(profile.target_macros[0]);
-	cout << setw(5) << to_string(profile.target_macros[1]);
-	cout << setw(5) << to_string(profile.target_macros[2]);
-	cout << setw(5) << to_string(profile.target_macros[3]);
-	// print left
-	cout << TAB << TAB << COLOR_TABLE_BG << left << COLOR_TABLE_TOTAL << BOLD;
-	cout << setw(25) << "LEFT";
-	cout << setw(10) << "" << setw(5);
+	// print TOTAL
+	cout << TAB TAB COLOR_TABLE_BG COLOR_TABLE_TOTAL BOLD;
+	cout << left << setw(TABLE_SPACING_NAME) << "TOTAL";
+	cout << left << setw(TABLE_SPACING_AMOUNT) << "";
+	cout << right << setw(TABLE_SPACING_NUMBERS) << table_total[0];
+	cout << right << setw(TABLE_SPACING_NUMBERS) << table_total[1];
+	cout << right << setw(TABLE_SPACING_NUMBERS) << table_total[2];
+	cout << right << setw(TABLE_SPACING_NUMBERS) << table_total[3];
+	cout << ENDL;
+	// print TARGET
+	cout << TAB TAB COLOR_TABLE_BG COLOR_TABLE_TARGET BOLD;
+	cout << left << setw(TABLE_SPACING_NAME) << "TARGET";
+	cout << left << setw(TABLE_SPACING_AMOUNT) << "";
+	cout << right << setw(TABLE_SPACING_NUMBERS) << profile.target_macros[0];
+	cout << right << setw(TABLE_SPACING_NUMBERS) << profile.target_macros[1];
+	cout << right << setw(TABLE_SPACING_NUMBERS) << profile.target_macros[2];
+	cout << right << setw(TABLE_SPACING_NUMBERS) << profile.target_macros[3];
+	cout << ENDL;
+	// print LEFT
+	cout << TAB TAB COLOR_TABLE_BG COLOR_TABLE_TOTAL BOLD;
+	cout << left << setw(TABLE_SPACING_NAME) << "LEFT";
+	cout << left << setw(TABLE_SPACING_AMOUNT) << "" << setw(5);
 	string color;
-	(left[0] > 0) ? (color = COLOR_OK) : (color = COLOR_FAIL);
-	cout << color << to_string(left[0]) << setw(5);
-	(left[1] > 0) ? (color = COLOR_OK) : (color = COLOR_FAIL);
-	cout << color << to_string(left[1]) << setw(5);
-	(left[2] > 0) ? (color = COLOR_OK) : (color = COLOR_FAIL);
-	cout << color << to_string(left[2]) << setw(5);
-	(left[3] > 0) ? (color = COLOR_OK) : (color = COLOR_FAIL);
-	cout << color << to_string(left[3]) << setw(5);
+	(table_left[0] > 0) ? (color = COLOR_OK) : (color = COLOR_FAIL);
+	cout << right << color << setw(TABLE_SPACING_NUMBERS) << to_string((short) table_left[0]) << setw(5);
+	(table_left[1] > 0) ? (color = COLOR_OK) : (color = COLOR_FAIL);
+	cout << right << color << setw(TABLE_SPACING_NUMBERS) << to_string((short) table_left[1]) << setw(5);
+	(table_left[2] > 0) ? (color = COLOR_OK) : (color = COLOR_FAIL);
+	cout << right << color << setw(TABLE_SPACING_NUMBERS) << to_string((short) table_left[2]) << setw(5);
+	(table_left[3] > 0) ? (color = COLOR_OK) : (color = COLOR_FAIL);
+	cout << right << color << setw(TABLE_SPACING_NUMBERS) << to_string((short) table_left[3]) << setw(5);
 	cout << ENDL;
 }
 
-string Day::getName(){
+string Day::get_name(){
 	return to_string(date.day) + "/" + to_string(date.month) + "/" + to_string(date.year);
 }
 

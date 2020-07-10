@@ -20,20 +20,20 @@ using namespace std;
 class Day{
 private:
 	void load();
-	bool loaded = false;
+	//bool loaded = false;
 	map<Food*, float> day_food_map;
 	Date date;
 public:
 	Day(us day, us month, us year);
-	virtual ~Day();
-	bool addFood(Food* food, float amount);
-	bool setFood(Food* food, float amount);
-	bool delFood(Food* food);
-	date_structure getDate();
-	float getKcals();
+	Day(Date date);
+	bool add_food(Food* food, float amount);
+	bool set_food(Food* food, float amount);
+	bool del_food(Food* food);
+	date_structure get_date();
+	float get_kcals();
 	void print();
 	void save();
-	string getName();
+	string get_name();
 };
 
 bool day_exists(Date date);

@@ -23,19 +23,27 @@
 #define FAIL		BOLD "[" COLOR_FAIL "FAILED" RESET BOLD "]"
 // colors
 #define COLOR_AMOUNT		"\u001B[35m" // purple
+#define COLOR_FOOD			"\u001B[34m" // blue
+#define COLOR_DAY			"\u001B[36m" // cyan
 #define COLOR_TABLE_TOTAL	"\u001B[33m" // yellow
 #define COLOR_TABLE_TARGET	"\u001B[34m" // blue
 #define COLOR_HELP			"\u001B[38;5;209m" // orange
-#define COLOR_DAY			"\u001B[36m" // cyan
-#define COLOR_FOOD			"\u001B[34m" // blue
 #define COLOR_PROFILE		"\u001B[33m" // yellow
 #define COLOR_SYNTAX		"\u001B[38;5;209m" // orange
 #define COLOR_TABLE_BG		"\u001B[48;5;234m" // grey BG
 #define COLOR_DATE			"\u001B[36m" // cyan
+#define COLOR_INFO_TAG		"\u001B[33m" // yellow
+#define COLOR_INFO_DATA		"\u001B[36m" // cyan
 // spacing
 #define SPACING_DEFAULT		30
 // other
-#define CLEAR_LINES	50
+#define CLEAR_LINES	100
+#define FORMAT_TAG TAB COLOR_TABLE_BG BOLD COLOR_INFO_TAG
+#define FORMAT_DATA RESET COLOR_TABLE_BG COLOR_INFO_DATA
+#define ERROR BOLD COLOR_FAIL "ERROR: "
+#define FORMAT_ERROR RESET COLOR_FAIL
+#define SYNTAX BOLD COLOR_SYNTAX TAB "- incorrect syntax -> " RESET COLOR_SYNTAX
+
 
 using namespace std;
 
