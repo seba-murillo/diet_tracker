@@ -6,90 +6,142 @@
  */
 
 #include <ctime>
-#include <string>
-#include "common.h"
 #include "date.h"
 
-using namespace std;
-
-bool is_leapyear(us year){
-	if(year % 400 == 0) return true;
-	if(year % 100 == 0) return false;
-	if(year % 4 == 0) return true;
+inline bool operator<(const Date& date1, const Date& date2){
+	if(date1.year < date2.year) return true;
+	if(date1.year > date2.year) return false;
+	if(date1.month < date2.month) return true;
+	if(date1.month > date2.month) return false;
+	if(date1.day < date2.day) return true;
+	if(date1.day > date2.day) return false;
 	return false;
 }
-
-Date get_previous_day(Date date){
-	Date result = date;
-	if(result.day != 1){
-		result.day--;
-		return result;
-	}
-	if(result.month == 1){
-		result.day = 31;
-		result.month = 12;
-		result.year--;
-		return result;
-	}
-	if(result.month == 2){
-		if(is_leapyear(result.year)) result.day = 29;
-		else result.day = 28;
-		result.month = 1;
-		return result;
-	}
-	if(result.month == 4 || result.month == 6 || result.month == 9 || result.month == 11){
-		result.day = 31;
-		result.month = 1;
-		return result;
-	}
-	result.day = 30;
-	result.month--;
-	return result;
+inline bool operator>(const Date& date1, const Date& date2){
+	return (date2 < date1);
+}
+inline bool operator<=(const Date& date1, const Date& date2){
+	return !(date1 > date2);
+}
+inline bool operator>=(const Date& date1, const Date& date2){
+	return !(date1 < date2);
+}
+inline bool operator==(const Date& date1, const Date& date2){
+	if(date1.year != date2.year) return false;
+	if(date1.month != date2.month) return false;
+	if(date1.day != date2.day) return false;
+	return true;
+}
+inline bool operator!=(const Date& date1, const Date& date2){
+	return !(date1 == date2);
 }
 
-Date get_next_day(Date date){
-	Date result = date;
-	if(result.month == 2){
-		if(result.day == 29){
-			result.day = 1;
-			result.month = 3;
-			return result;
-		}
-		if(result.day == 28 && !is_leapyear(result.year)){
-			result.day = 1;
-			result.month = 3;
-			return result;
-		}
-		result.day++;
-		return result;
-	}
-	if(result.month == 4 || result.month == 6 || result.month == 9 || result.month == 11){
-		if(result.day == 30){
-			result.day = 1;
-			result.month++;
-			return result;
-		}
-		result.day++;
-		return result;
-	}
-	if(result.day == 31){
-		result.day = 1;
-		if(result.month == 12){
-			result.month = 1;
-			result.year++;
-			return result;
-		}
-		result.month++;
-		return result;
-	}
-	result.day++;
-	return result;
+std::ostream& operator<<(std::ostream& stream, const Date& date){
+	stream << date.day << "/" << date.month << "/" << date.year;
+	return stream;
 }
 
-Date add_days(Date date, short days){
-	if(days == 0) return date;
-	if(days > 0) return add_days(get_next_day(date), days - 1);
-	return add_days(get_previous_day(date), days + 1);
+Date& operator--(Date& date){ // prefix
+	if(date.day != 1){
+		date.day--;
+		return date;
+	}
+	if(date.month == 1){
+		date.day = 31;
+		date.month = 12;
+		date.year--;
+		return date;
+	}
+	if(date.month == 2){
+		if(is_leapyear(date.year)) date.day = 29;
+		else date.day = 28;
+		date.month = 1;
+		return date;
+	}
+	if(date.month == 4 || date.month == 6 || date.month == 9 || date.month == 11){
+		date.day = 31;
+		date.month = 1;
+		return date;
+	}
+	date.day = 30;
+	date.month--;
+	return date;
+}
+
+Date operator--(Date& date, int){ // posfix
+	Date value = date;
+	--date;
+	return value;
+}
+
+Date& operator++(Date& date){ // prefix
+	if(date.month == 2){
+		if(date.day == 29){
+			date.day = 1;
+			date.month = 3;
+			return date;
+		}
+		if(date.day == 28 && !is_leapyear(date.year)){
+			date.day = 1;
+			date.month = 3;
+			return date;
+		}
+		date.day++;
+		return date;
+	}
+	if(date.month == 4 || date.month == 6 || date.month == 9 || date.month == 11){
+		if(date.day == 30){
+			date.day = 1;
+			date.month++;
+			return date;
+		}
+		date.day++;
+		return date;
+	}
+	if(date.day == 31){
+		date.day = 1;
+		if(date.month == 12){
+			date.month = 1;
+			date.year++;
+			return date;
+		}
+		date.month++;
+		return date;
+	}
+	date.day++;
+	return date;
+}
+
+Date operator++(Date& date, int){ // posfix
+	Date value = date;
+	++date;
+	return value;
+}
+
+Date& operator+=(Date& date, int days){
+	if(days > 0) for(int i = 0;i < days;i++)
+		date++;
+	else for(int i = days;i < 0;i++)
+		date--;
+	return date;
+}
+
+Date operator+(Date date1, int days){
+	date1 += days;
+	return date1;
+}
+
+Date& operator-=(Date& date, int days){
+	if(days > 0) for(int i = 0;i < days;i++)
+		date--;
+	else for(int i = days;i < 0;i++)
+		date++;
+	return date;
+}
+
+Date operator-(Date date1, int days){
+	date1 -= days;
+	return date1;
 }
 
 Date get_today(){
@@ -120,7 +172,7 @@ us get_age(Date birth){
 	struct_D->tm_year -= 1970;
 	char str[4];
 	strftime(str, 4, "%Y", struct_D);
-	return (us) stoi(str);
+	return (us) std::stoi(str);
 }
 
 bool is_valid_date(us day, us month, us year){
@@ -138,5 +190,12 @@ bool is_valid_date(us day, us month, us year){
 
 bool is_valid_date(Date date){
 	return is_valid_date(date.day, date.month, date.year);
+}
+
+bool is_leapyear(us year){
+	if(year % 400 == 0) return true;
+	if(year % 100 == 0) return false;
+	if(year % 4 == 0) return true;
+	return false;
 }
 

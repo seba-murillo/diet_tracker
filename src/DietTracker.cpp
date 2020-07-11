@@ -52,7 +52,7 @@ using namespace std;
 
 us get_BMR();
 us get_TDEE();
-us get_average(us days);
+us get_average_kcals(Date date, us days);
 bool load_foods();
 bool load_profile();
 bool load_weights();
@@ -135,15 +135,14 @@ us get_TDEE(){
 	return (us) (get_BMR() * profile.A);
 }
 
-us get_average(us days){
-	Date date = get_today();
+us get_average_kcals(Date date, us days){
 	double kcal = 0;
 	us day;
 	for(day = 1;day <= days;day++){
 		if(!day_exists(date)) break;
 		Day D = Day(date.day, date.month, date.year);
 		kcal += D.get_kcals();
-		date = get_previous_day(date);
+		date--;
 	}
 	return (us) (kcal / day);
 }
@@ -394,7 +393,7 @@ void print_weights(){
 void print_streak(){
 	Date date = get_today();
 	for(us streak = 0;;streak++){
-		date = get_previous_day(date);
+		date--;
 		if(day_exists(date)) continue;
 		cout << BOLD "- current streak: " COLOR_SYNTAX << streak << " days!" ENDL;
 		return;
@@ -568,19 +567,21 @@ void command_load(string day){
 		return;
 	}
 	else if(day == "yes" || day == "yesterday"){
-		load_day(get_previous_day(today));
+		load_day(--today);
 		return;
 	}
 	else if(day == "tom" || day == "tomorrow"){
-		load_day(get_next_day(today));
+		load_day(++today);
 		return;
 	}
 	else if(day == "prev"){
-		load_day(get_previous_day(selected_day->get_date()));
+		Date date = selected_day->get_date();
+		load_day(--date);
 		return;
 	}
 	else if(day == "next"){
-		load_day(get_next_day(selected_day->get_date()));
+		Date date = selected_day->get_date();
+		load_day(++date);
 		return;
 	}
 	size_t pos;
@@ -656,13 +657,27 @@ void command_weight(float weight){
 	cout << "'s weight to " COLOR_WEIGHT << weight << ENDL;
 	save_weights();
 }
+/*
+us get_average_kcals2(Date from, Date to){
+	if(from > to) return 0;
+	double kcal = 0;
+	us day;
+	for(day = 1;day <= days;day++){
+		if(!day_exists(date)) break;
+		Day D = Day(date.day, date.month, date.year);
+		kcal += D.get_kcals();
+		date--;
+	}
+	return (us) (kcal / day);
+}*/
 
 void command_average(us days){
 	if(days < 2){
 		cout << ERROR FORMAT_ERROR "invalid days" ENDL;
 		return;
 	}
-	Date date = add_days(get_today(), -1 * days);
+	//Date date = add_days(get_today(), -1 * days);
+	Date date = get_today() - days;
 	double total = 0;
 	us valid_days = 0;
 	for(int i = 0;i < days;i++){
@@ -672,7 +687,7 @@ void command_average(us days){
 			total += kcals;
 			valid_days++;
 		}
-		date = get_next_day(date);
+		date++;
 	}
 	if(valid_days == 0){
 		cout << "> " COLOR_SYNTAX "not enough" RESET " info to get average" ENDL;
@@ -689,7 +704,8 @@ void command_last(us days){
 	}
 	string FORMAT_DATE = TAB BOLD COLOR_DATE COLOR_TABLE_BG;
 	string FORMAT_KCAL = COLOR_AMOUNT COLOR_TABLE_BG;
-	Date date = add_days(get_today(), -1 * days);
+	//Date date = add_days(get_today(), -1 * days);
+	Date date = get_today() - days;
 	cout << "> last " COLOR_AMOUNT << days << RESET " days:" ENDL;
 	for(int i = 0;i < days;i++){
 		Day day = Day(date);
@@ -697,7 +713,7 @@ void command_last(us days){
 		cout << FORMAT_DATE << left << setw(20) << day.get_name();
 		if(kcals > 0) cout << FORMAT_KCAL << right << setw(5) << day.get_kcals() << ENDL;
 		else cout << FORMAT_KCAL << right << setw(5) << "no info" ENDL;
-		date = get_next_day(date);
+		date++;
 	}
 }
 

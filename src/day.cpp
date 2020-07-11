@@ -97,7 +97,7 @@ bool Day::del_food(Food* food){
 	return true;
 }
 
-date_structure Day::get_date(){
+Date Day::get_date(){
 	return this->date;
 }
 
