@@ -18,10 +18,11 @@ typedef struct date_structure {
 
 Date get_previous_day(Date date);
 Date get_next_day(Date date);
+Date add_days(Date date, short days);
 Date get_today();
 us get_age(Date birth);
-bool isValidDate(us day, us month, us year);
-bool isValidDate(Date date);
+bool is_valid_date(us day, us month, us year);
+bool is_valid_date(Date date);
 bool is_leapyear(us year);
 
 //double get_time_since(Date date);

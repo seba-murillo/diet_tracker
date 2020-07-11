@@ -34,7 +34,7 @@ Food::Food(string name, string alias, string unit, float serving, float kcal, fl
 void Food::print(){
 	cout << fixed;
 	cout.precision(1);
-	cout << BOLD << "- nutritional info of '" << this->name << "':" << ENDL;
+	cout << BOLD "- nutritional info of '" << this->name << "':" ENDL;
 	if(this->alias != EMPTY_ALIAS){
 		cout << FORMAT_TAG << left << setw(10) << "alias:";
 		cout << FORMAT_DATA << right << setw(15) << this->alias << ENDL;
@@ -45,7 +45,6 @@ void Food::print(){
 	cout << FORMAT_TAG << left << setw(10) << "C:" << FORMAT_DATA << right << setw(15) << this->C << ENDL;
 	cout << FORMAT_TAG << left << setw(10) << "F:" << FORMAT_DATA << right << setw(15) << this->F << ENDL;
 	cout << FORMAT_TAG << left << setw(10) << "P:" << FORMAT_DATA << right << setw(15) << this->P << ENDL;
-	cout << endl;
 }
 
 Food* Food::find_food(string foodname){

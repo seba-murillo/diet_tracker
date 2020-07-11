@@ -35,37 +35,26 @@ using namespace std;
 #define SKIP_ROW_TEXT				"name"
 #define TEXT_END					"END"
 
+#define DEFAULT_DAYS		7
+
 // TODO
 /*
- screen -> table_print(string left, string right)
- load_profile
-
- void command_load();
-
- void command_weight();
- void command_average();
- void command_last();
-
- create profile input checking + CPP parsing
 
  measured TDEE
-
+ create profile input checking + CPP parsing
+ improve load spread sheet
 
  JSON read/write lib
  'XML' read/write lib
  multiple demiliter string parsing function
-
-
  */
 
 void process_command(string command);
-void screen_test();
 
 void init_files();
-bool load_spreadsheet();
-bool load_foodfile();
+bool load_foods();
 bool load_profile();
-bool load_weighfile();
+bool load_weights();
 
 // show
 void print_profile();
@@ -73,9 +62,8 @@ void print_weights();
 void print_streak();
 
 // save
-bool save_foodfile();
 bool save_profile();
-bool save_weighfile();
+bool save_weights();
 
 // calc
 us get_BMR();
@@ -108,7 +96,7 @@ struct profile_structure profile;
 Day* selected_day;
 
 int main(int argc, char** argv){
-	cout << "> starting [" << COLOR_FAIL << BOLD << "DietTracker v1.0" << RESET << "]" << ENDL;
+	cout << "> starting [" COLOR_FAIL BOLD "DietTracker v1.0" RESET "]" ENDL;
 	// setup signal handling
 	atexit(exit_program);
 	struct sigaction action;
@@ -120,11 +108,9 @@ int main(int argc, char** argv){
 	sigaction(SIGTERM, &action, NULL);
 	// create directory system and load food data and profile
 	init_files();
-	if(!load_foodfile()){
-		cout << TAB << COLOR_FAIL << "- neither foodfile or food_spreadsheet found, exiting..." << ENDL;
-		exit(EXIT_FAILURE);
-	}
+	if(!load_foods()) exit(EXIT_FAILURE);
 	if(!load_profile()) create_profile();
+	load_weights();
 	// load today
 	selected_day = new Day(get_today());
 	selected_day->print();
@@ -140,14 +126,19 @@ int main(int argc, char** argv){
 }
 
 void process_command(string command){
-#ifdef verbose
-	cout << "process_command: [" << command << "]" << endl;
-#endif
 	if(command.empty()) return;
 	stringstream stream(command);
 	string cmd, arg, tmp;
-	float number = 1;
+	float number = INEX;
 	stream >> cmd;
+	if(cmd == "load"){
+		while(stream >> tmp){
+			if(!arg.empty()) arg += " ";
+			arg += tmp;
+		}
+		command_load(arg);
+		return;
+	}
 	while(stream >> tmp){
 		try{
 			number = stod(tmp);
@@ -161,28 +152,29 @@ void process_command(string command){
 		for(int i = 0;i < CLEAR_LINES;i++)
 			cout << ENDL;
 	}
-	else if(cmd == "show" || cmd == "list" || cmd == "ls"){
-		command_show();
-	}
-	else if(cmd == "load"){
-		command_load(arg);
-	}
 	else if(cmd == "add"){
+		if(number == INEX) number = 1;
 		command_add(arg, number);
 	}
 	else if(cmd == "set"){
+		if(number == INEX) number = 1;
 		command_set(arg, number);
 	}
 	else if(cmd == "remove"){
 		command_del(arg);
 	}
+	else if(cmd == "info"){
+		command_info(arg);
+	}
 	else if(cmd == "weight"){
 		command_weight(number);
 	}
 	else if(cmd == "average"){
+		if(number == INEX) number = DEFAULT_DAYS;
 		command_average((us) number);
 	}
 	else if(cmd == "last"){
+		if(number == INEX) number = DEFAULT_DAYS;
 		command_last((us) number);
 	}
 	else if(cmd == "weights"){
@@ -194,18 +186,15 @@ void process_command(string command){
 	else if(cmd == "profile"){
 		print_profile();
 	}
+	else if(cmd == "show" || cmd == "list" || cmd == "ls"){
+		command_show();
+	}
 	else if(cmd == "foodlist"){
 		Food::print_all();
 	}
 	else{
-		cout << BOLD COLOR_FAIL << "- unknown command:" << RESET << " use 'help' to se available commands\n" << ENDL;
+		cout << BOLD COLOR_SYNTAX "- unknown command:" RESET " use 'help' to se available commands" ENDL;
 	}
-}
-
-void screen_test(){
-	cout << "screen test:" << ENDL;
-	cout << OK << ENDL;
-	cout << FAIL << ENDL;
 }
 
 void init_files(){
@@ -213,82 +202,9 @@ void init_files(){
 	mkdir(DIRECTORY_MAIN "/" DIRECTORY_DAYS, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
 }
 
-bool save_foodfile(){
-	string filename = DIRECTORY_MAIN "/" FILENAME_FOOD_DATA;
-	ofstream file;
-	file.open(filename, ios::out);
-	if(!file.is_open()){
-		cout << ERROR << FORMAT_ERROR << "unable to open '" << filename << "'" << ENDL;
-		return false;
-	}
-	file << "{\"foods\": [\n";
-	file.precision(1);
-	file << fixed;
-	Food* food;
-	us count = 1;
-	for(auto map_row : food_map){
-		food = map_row.second;
-		file << "\t{";
-		file << "\"name\": \"" << food->name << "\", ";
-		file << "\"alias\": \"" << food->alias << "\", ";
-		file << "\"unit\": \"" << food->unit << "\", ";
-		file << "\"serving\": " << food->serving << ", ";
-		file << "\"kcal\": " << food->kcal << ", ";
-		file << "\"C\": " << food->C << ", ";
-		file << "\"F\": " << food->F << ", ";
-		file << "\"P\": " << food->P;
-		if(count++ != food_map.size()) file << "},\n";
-		else file << "}\n";
-	}
-	file << "]}";
-	file.close();
-	return true;
-}
-
-bool load_foodfile(){
+bool load_foods(){
 #ifdef verbose
-	cout << "<< load_foodfile()" << endl;
-#endif
-	string filename = DIRECTORY_MAIN "/" FILENAME_FOOD_DATA;
-	ifstream file;
-	file.open(filename, ios::in);
-	// TODO use last_updated file
-	if(FORCE_SPREADSHEET){
-		bool x = load_spreadsheet();
-		save_foodfile();
-		return x;
-	}
-	if(!file.is_open()){
-		if(!load_spreadsheet()) return false;
-		save_foodfile();
-		return true;
-	}
-	string line, skip;
-	string name, alias, unit;
-	float serving, kcal, C, F, P;
-	getline(file, line); // skip first line
-	while(getline(file, line)){
-		if(line == "]}") break; // last line
-		name = extract(line, "\"name\": \"", "\",");
-		alias = extract(line, "\"alias\": \"", "\",");
-		unit = extract(line, "\"unit\": \"", "\",");
-		serving = stod(extract(line, "\"serving\": ", ","));
-		kcal = stod(extract(line, "\"kcal\": ", ","));
-		C = stod(extract(line, "\"C\": ", ","));
-		F = stod(extract(line, "\"F\": ", ","));
-		P = stod(extract(line, "\"P\": ", "}"));
-		new Food(name, alias, unit, serving, kcal, C, F, P);
-	}
-	file.close();
-#ifdef verbose
-	cout << "load_foodfile() >>" << endl;
-#endif
-	return true;
-}
-
-bool load_spreadsheet(){
-#ifdef verbose
-	cout << "<< load_spreadsheet()" << endl;
+	cout << left << setw(SPACING_DEFAULT) << "- loading foods...";
 #endif
 	int error = 0;
 	zip* spreadsheet = zip_open(DIRECTORY_MAIN "/" FILENAME_FOOD_SPREADSHEET, 0, &error);
@@ -317,9 +233,6 @@ bool load_spreadsheet(){
 			if(pos1 == NULL || pos2 == NULL) break;
 			memset(extracted, 0, sizeof(extracted));
 			strncpy(extracted, pos1, pos2 - pos1);
-#ifdef verbose
-			cout << TAB << "i: " << i << "\textracted: [" << extracted << "]" << endl;
-#endif
 			switch(i){
 				case 0: {
 					name = string(extracted);
@@ -371,85 +284,133 @@ bool load_spreadsheet(){
 		}
 		if(alias == "-") alias = EMPTY_ALIAS;
 		// no need to deallocate, Food has no deconstructor
-		Food* food = new Food(name, alias, unit, serving, kcal, C, F, P);
-		food->print();
+		new Food(name, alias, unit, serving, kcal, C, F, P);
 		pos1 = strstr(pos1, TAG_ROW_START); // next row
 		pos2 = pos1 + strlen(TAG_ROW_START);
 	}
 	delete[] CONTENT_XML;
-#ifdef verbose
-	cout << "load_spreadsheet() >>" << endl;
-#endif
 	return true;
 }
 
 void command_add(string foodname, float amount){
 	Food* food = Food::find_food(foodname);
 	if(!selected_day->add_food(food, amount)){
-		cout << ERROR << FORMAT_ERROR << "unknown food '" << foodname << "'" << ENDL;
+		cout << ERROR FORMAT_ERROR "unknown food '" << foodname << "'" ENDL;
 		return;
 	}
-	cout << "- added " << BOLD COLOR_AMOUNT << amount << " " << food->unit;
-	cout << RESET << " of '" << BOLD COLOR_FOOD << foodname << RESET << "'";
-	cout << " to " << BOLD COLOR_DAY << selected_day->get_name() << "'s foods" << ENDL;
+	cout << "- added " BOLD COLOR_AMOUNT << amount << " " << food->unit;
+	cout << RESET << " of '" BOLD COLOR_FOOD << foodname << RESET "'";
+	cout << " to " BOLD COLOR_DAY << selected_day->get_name() << "'s foods" ENDL;
+	;
 }
 
 void command_set(string foodname, float amount){
 	Food* food = Food::find_food(foodname);
 	if(amount < 0.1){
-		cout << ERROR << FORMAT_ERROR << "cannot set '" << foodname << "' to a negative value" << ENDL;
+		cout << ERROR FORMAT_ERROR "cannot set '" << foodname << "' to a negative value" ENDL;
 		return;
 	}
 	if(!selected_day->set_food(food, amount)){
-		cout << ERROR << FORMAT_ERROR << "'" << foodname << "' is not part of the day's foods" << ENDL;
+		cout << ERROR FORMAT_ERROR "'" << foodname << "' is not part of the day's foods" ENDL;
 		return;
 	}
-	cout << "- set '" << BOLD COLOR_FOOD << foodname << RESET << "'";
-	cout << " to " << BOLD COLOR_AMOUNT << amount << food->unit << RESET;
-	cout << " on " << BOLD COLOR_DAY << selected_day->get_name() << "'s foods" << ENDL;
+	cout << "- set '" BOLD COLOR_FOOD << foodname << RESET "'";
+	cout << " to " BOLD COLOR_AMOUNT << amount << " " << food->unit << RESET;
+	cout << " on " BOLD COLOR_DAY << selected_day->get_name() << RESET "'s foods" ENDL;
 }
 
 void command_del(string foodname){
 	Food* food = Food::find_food(foodname);
 	if(!selected_day->del_food(food)){
-		cout << ERROR << FORMAT_ERROR << "'" << foodname << "' is not part of the day's foods" << ENDL;
+		cout << ERROR FORMAT_ERROR "'" << foodname << "' is not part of the day's foods" ENDL;
 		return;
 	}
-	cout << "- removed '" << BOLD COLOR_FOOD << foodname << RESET << "'";
-	cout << " from " << BOLD COLOR_DAY << selected_day->get_name() << "'s foods" << ENDL;
+	cout << "- removed '" BOLD COLOR_FOOD << foodname << RESET "'";
+	cout << " from " BOLD COLOR_DAY << selected_day->get_name() << "'s foods" ENDL;
+}
+
+void print_weights(){
+	string date_format = TAB TAB BOLD COLOR_DATE COLOR_TABLE_BG;
+	string weight_format = COLOR_WEIGHT COLOR_TABLE_BG;
+	for(auto row : weight_map){
+		cout << date_format << left << setw(20) << row.first << RESET;
+		cout << weight_format << setprecision(1) << row.second << ENDL;
+	}
 }
 
 void command_weight(float weight){
-
+	if(weight < 30.0){
+		cout << ERROR FORMAT_ERROR "invalid weight" ENDL;
+		return;
+	}
+	weight_map.insert( {selected_day->get_name(), weight});
+	cout << "- set " BOLD COLOR_DAY << selected_day->get_name() << RESET;
+	cout << "'s weight to " COLOR_WEIGHT << weight << ENDL;
+	save_weights();
 }
 
 void command_info(string foodname){
 	Food* food = Food::find_food(foodname);
 	if(food == nullptr){
-		cout << ERROR << FORMAT_ERROR << "unknown food '" << foodname << "'" << ENDL;
+		cout << ERROR FORMAT_ERROR "unknown food '" << foodname << "'" ENDL;
 		return;
 	}
 	food->print();
 }
 
 void command_average(us days){
-
+	if(days < 2){
+		cout << ERROR FORMAT_ERROR "invalid days" ENDL;
+		return;
+	}
+	Date date = add_days(get_today(), -1 * days);
+	double total = 0;
+	us valid_days = 0;
+	for(int i = 0;i < days;i++){
+		Day day = Day(date);
+		float kcals = day.get_kcals();
+		if(kcals > 0){
+			total += kcals;
+			valid_days++;
+		}
+		date = get_next_day(date);
+	}
+	if(valid_days == 0){
+		cout << "> " COLOR_SYNTAX "not enough" RESET " info to get average" ENDL;
+		return;
+	}
+	cout << "> average over the last " COLOR_AMOUNT << valid_days << RESET " days: ";
+	cout << BOLD COLOR_AMOUNT << total / valid_days << RESET " kcal" ENDL;
 }
 
 void command_last(us days){
-
+	if(days < 2){
+		cout << ERROR FORMAT_ERROR "invalid days" ENDL;
+		return;
+	}
+	string FORMAT_DATE = TAB BOLD COLOR_DATE COLOR_TABLE_BG;
+	string FORMAT_KCAL = COLOR_AMOUNT COLOR_TABLE_BG;
+	Date date = add_days(get_today(), -1 * days);
+	cout << "> last " COLOR_AMOUNT << days << RESET " days:" ENDL;
+	for(int i = 0;i < days;i++){
+		Day day = Day(date);
+		float kcals = day.get_kcals();
+		cout << FORMAT_DATE << left << setw(20) << day.get_name();
+		if(kcals > 0) cout << FORMAT_KCAL << right << setw(5) << day.get_kcals() << ENDL;
+		else cout << FORMAT_KCAL << right << setw(5) << "no info" ENDL;
+		date = get_next_day(date);
+	}
 }
 
 void load_day(Date day){
 	selected_day->save();
 	delete (selected_day);
 	selected_day = new Day(day);
-	cout << "- loaded " << BOLD COLOR_DAY << selected_day->get_name() << ENDL;
+	//cout << "- loaded " BOLD COLOR_DAY << selected_day->get_name() << RESET ":" ENDL;
+	selected_day->print();
 }
 
-// Date get_today()
 void command_load(string day){
-	cout << "load: |" << day << "|" << endl;
 	Date today = get_today();
 	if(day == "now" || day == "today"){
 		load_day(today);
@@ -463,20 +424,26 @@ void command_load(string day){
 		load_day(get_next_day(today));
 		return;
 	}
+	else if(day == "prev"){
+		load_day(get_previous_day(selected_day->get_date()));
+		return;
+	}
+	else if(day == "next"){
+		load_day(get_next_day(selected_day->get_date()));
+		return;
+	}
+	size_t pos;
+	while((pos = day.find('/')) != string::npos)
+		day[pos] = ' '; // remove '/'
 	Date date;
-	string str_date[3];
 	date.year = today.year;
 	stringstream stream(day);
-	getline(stream, str_date[0], '/');
-	getline(stream, str_date[1], '/');
-	getline(stream, str_date[2], '/');
-	try{
-		date.day = stoi(str_date[0]);
-		date.month = stoi(str_date[1]);
-		if(!str_date[2].empty()) date.year = stoi(str_date[2]);
-	}
-	catch(invalid_argument& e){
-		cout << SYNTAX << "use 'load DD/MM' or 'load DD/MM/YYYY'" << ENDL;
+	stream >> date.day;
+	stream >> date.month;
+	stream >> date.year;
+	if(date.year == 0) date.year = today.year;
+	if(!is_valid_date(date)){
+		cout << BOLD COLOR_SYNTAX "- invalid date" ENDL;
 		return;
 	}
 	load_day(date);
@@ -487,124 +454,121 @@ void command_show(){
 }
 
 void command_help(){
-	cout << COLOR_HELP << BOLD << "- available commands are:" << ENDL << left;
-	cout << TAB << TAB << COLOR_HELP << "show / list / ls" << ENDL;
-	cout << TAB << TAB << COLOR_HELP << "clear" << ENDL;
-	cout << TAB << TAB << COLOR_HELP << setw(15) << "load" << RESET << "[DD/MM or DD/MM/YYYY]" << ENDL;
-	cout << TAB << TAB << COLOR_HELP << setw(15) << "add" << RESET << "['foodname'] [amount]" << ENDL;
-	cout << TAB << TAB << COLOR_HELP << setw(15) << "set" << RESET << "['foodname'] [amount]" << ENDL;
-	cout << TAB << TAB << COLOR_HELP << setw(15) << "remove" << RESET << "['foodname']" << ENDL;
-	cout << TAB << TAB << COLOR_HELP << setw(15) << "weight" << RESET << "['weight']" << ENDL;
-	cout << TAB << TAB << COLOR_HELP << setw(15) << "last" << RESET << "['days']" << ENDL;
-	cout << TAB << TAB << COLOR_HELP << setw(15) << "average" << RESET << "['days']" << ENDL;
-	cout << TAB << TAB << COLOR_HELP << "profile" << ENDL;
-	cout << TAB << TAB << COLOR_HELP << "weights" << ENDL;
-	cout << TAB << TAB << COLOR_HELP << "exit / quit / q" << ENDL;
+	cout << COLOR_HELP BOLD "- available commands are:" ENDL << left;
+	cout << TAB TAB COLOR_HELP "show / list / ls" ENDL;
+	cout << TAB TAB COLOR_HELP "clear" ENDL;
+	cout << TAB TAB COLOR_HELP << setw(15) << "load" RESET "[DD/MM or DD/MM/YYYY]" ENDL;
+	cout << TAB TAB COLOR_HELP << setw(15) << "add" RESET "['foodname'] [amount]" ENDL;
+	cout << TAB TAB COLOR_HELP << setw(15) << "set" RESET "['foodname'] [amount]" ENDL;
+	cout << TAB TAB COLOR_HELP << setw(15) << "remove" RESET "['foodname']" ENDL;
+	cout << TAB TAB COLOR_HELP << setw(15) << "weight" RESET "['weight']" ENDL;
+	cout << TAB TAB COLOR_HELP << setw(15) << "last" RESET "['days']" ENDL;
+	cout << TAB TAB COLOR_HELP << setw(15) << "average" RESET "['days']" ENDL;
+	cout << TAB TAB COLOR_HELP "profile" ENDL;
+	cout << TAB TAB COLOR_HELP "weights" ENDL;
+	cout << TAB TAB COLOR_HELP "exit / quit / q" ENDL;
 }
 
 void create_profile(){
-	cout << COLOR_HELP << BOLD << "> creating new profile..." << ENDL;
+	cout << TAB COLOR_HELP BOLD "> creating new profile..." ENDL;
 	string input;
 	while(true){
-		cout << TAB << "1. enter your birth date (dd/mm/yyyy): ";
+		cout << TAB "1. enter your birth date (dd/mm/yyyy): ";
 		cin >> input;
 		sscanf(input.c_str(), "%2hu/%2hu/%4hu", &profile.birth.day, &profile.birth.month, &profile.birth.year);
-		if(isValidDate(profile.birth.day, profile.birth.month, profile.birth.year)) break;
+		if(is_valid_date(profile.birth.day, profile.birth.month, profile.birth.year)) break;
 	}
 	while(true){
-		cout << TAB << "2. enter your height (cm): ";
+		cout << TAB "2. enter your height (cm): ";
 		cin >> input;
 		sscanf(input.c_str(), "%hu", &profile.height);
 		if(profile.height > 100 && profile.height < 250) break;
 	}
 	while(true){
-		cout << TAB << "3. enter your weight (kg): ";
+		cout << TAB "3. enter your weight (kg): ";
 		cin >> input;
-		sscanf(input.c_str(), "%hu", &profile.weight);
+		sscanf(input.c_str(), "%f", &profile.weight);
 		if(profile.weight > 40 && profile.weight < 200) break;
 	}
 	while(true){
-		cout << TAB << "4. enter your sex ('M' or 'F'): ";
+		cout << TAB "4. enter your sex ('M' or 'F'): ";
 		cin >> profile.S;
 		if(profile.S == 'M' || profile.S == 'F') break;
 	}
 	while(true){
-		cout << TAB << "6. enter your target macros (C-F-P): ";
+		cout << TAB "6. enter your target macros (C-F-P): ";
 		cin >> input;
 		sscanf(input.c_str(), "%hu-%hu-%hu", &profile.target_macros[0], &profile.target_macros[1], &profile.target_macros[2]);
 		break;
 	}
 	while(true){
-		cout << TAB << "6. choose one: " << ENDL;
-		cout << TAB << TAB << "A) sedentary: little to no exercise" << ENDL;
-		cout << TAB << TAB << "B) lightly active: light exercise" << ENDL;
-		cout << TAB << TAB << "C) moderately active: moderate exercise" << ENDL;
-		cout << TAB << TAB << "D) very active: heavy exercise" << ENDL;
-		cout << TAB << TAB << "E) extremely active: very heavy exercise" << ENDL;
-		cout << TAB << "- your choice: ";
+		cout << TAB "6. choose one: " ENDL;
+		cout << TAB TAB "A) sedentary: little to no exercise" ENDL;
+		cout << TAB TAB "B) lightly active: light exercise" ENDL;
+		cout << TAB TAB "C) moderately active: moderate exercise" ENDL;
+		cout << TAB TAB "D) very active: heavy exercise" ENDL;
+		cout << TAB TAB "E) extremely active: very heavy exercise" ENDL;
+		cout << TAB "- your choice: ";
 		char choice;
 		cin >> choice;
 		switch(choice){
 			case 'A':
-				profile.M = 1.2;
+				profile.A = 1.2;
 				break;
 			case 'B':
-				profile.M = 1.375;
+				profile.A = 1.375;
 				break;
 			case 'C':
-				profile.M = 1.55;
+				profile.A = 1.55;
 				break;
 			case 'D':
-				profile.M = 1.725;
+				profile.A = 1.725;
 				break;
 			case 'E':
-				profile.M = 1.9;
+				profile.A = 1.9;
 				break;
 		}
-		if(profile.M != 1.0) break;
+		if(profile.A != 1.0) break;
 	}
 	if(!save_profile()) return;
-	cout << "> profile " << BOLD << COLOR_OK << "created" << ENDL;
+	cout << "> profile " BOLD COLOR_OK "created" ENDL;
 }
 
 bool load_profile(){
-	/*
-	 string filename = DIRECTORY_MAIN "/" FILENAME_PROFILE;
-	 ifstream file;
-	 file.open(filename, ios::in);
-	 if(!file.is_open()) return false;
-	 string line;
-	 getline(file, line); // skip first line
-	 while(getline(file, line)){
-	 if(line == "}") break; // last line
-	 &profile.birth.day = extract(line, "\"name\": \"", "\",");
-
-	 alias = extract(line, "\"alias\": \"", "\",");
-	 unit = extract(line, "\"unit\": \"", "\",");
-	 serving = stod(extract(line, "\"serving\": ", ","));
-	 kcal = stod(extract(line, "\"kcal\": ", ","));
-	 C = stod(extract(line, "\"C\": ", ","));
-	 F = stod(extract(line, "\"F\": ", ","));
-	 P = stod(extract(line, "\"P\": ", "}"));
-	 new Food(name, alias, unit, serving, kcal, C, F, P);
-	 }
-
-	 sscanf(line.c_str(), "{\"birthdate\": \"%2hu/%2hu/%4hu, \"height\": %hu, \"weight\": %hu, \"sex\": %c, "
-	 "\"activity\": %f, \"target_C\": %hu, \"target_F\": %hu, \"targ
-	 et_P\": %hu}", &profile.birth.day, &profile.birth.month, &profil
-	 e.birth.year, &profile.height, &profile.weight, &profile.S, &profile.M, &profile.target_macros[0], profile.target_macros[1], &profile.target_macros[2]);
-	 file.close();
-	 */
-	profile.birth.day = 18;
-	profile.birth.month = 1;
-	profile.birth.year = 1993;
-	profile.height = 190;
-	profile.weight = 103;
-	profile.S = 'M';
-	profile.M = 1.55;
-	profile.target_macros[0] = 220;
-	profile.target_macros[1] = 80;
-	profile.target_macros[2] = 200;
+#ifdef verbose
+	cout << left << setw(SPACING_DEFAULT) << "- loading profile...";
+#endif
+	string filename = DIRECTORY_MAIN "/" FILENAME_PROFILE;
+	ifstream file;
+	file.open(filename, ios::in);
+	if(!file.is_open()){
+		cout << FAIL;
+		return false;
+	}
+	string tmp;
+	file >> tmp >> tmp >> tmp;
+	tmp[tmp.find("\"")] = ' ';
+	tmp[tmp.find("\"")] = ' ';
+	tmp[tmp.find(",")] = ' ';
+	stringstream stream(tmp);
+	string birth[3];
+	getline(stream, birth[0], '/');
+	getline(stream, birth[1], '/');
+	getline(stream, birth[2], '/');
+	profile.birth.day = stoi(birth[0]);
+	profile.birth.month = stoi(birth[1]);
+	profile.birth.year = stoi(birth[2]);
+	file >> tmp >> profile.height >> tmp;
+	file >> tmp >> profile.weight >> tmp;
+	file >> tmp >> profile.S >> tmp;
+	file >> tmp >> profile.A >> tmp;
+	file >> tmp >> profile.target_macros[0] >> tmp;
+	file >> tmp >> profile.target_macros[1] >> tmp;
+	file >> tmp >> profile.target_macros[2];
+	file.close();
+#ifdef verbose
+	cout << OK;
+#endif
 	return true;
 }
 
@@ -613,7 +577,7 @@ bool save_profile(){
 	ofstream file;
 	file.open(filename, ios::out);
 	if(!file.is_open()){
-		cout << ERROR << FORMAT_ERROR << "unable to open '" << filename << "'" << ENDL;
+		cout << ERROR FORMAT_ERROR "unable to open '" << filename << "'" ENDL;
 		return false;
 	}
 	file << "{" << endl;
@@ -621,7 +585,7 @@ bool save_profile(){
 	file << "\"height\": " << profile.height << ", " << endl;
 	file << "\"weight\": " << profile.weight << ", " << endl;
 	file << "\"sex\": " << profile.S << ", " << endl;
-	file << "\"activity\": " << profile.M << ", " << endl;
+	file << "\"activity\": " << profile.A << ", " << endl;
 	file << "\"target_C\": " << profile.target_macros[0] << ", " << endl;
 	file << "\"target_F\": " << profile.target_macros[1] << ", " << endl;
 	file << "\"target_P\": " << profile.target_macros[2] << endl;
@@ -629,8 +593,10 @@ bool save_profile(){
 	file.close();
 	return true;
 }
-
-bool load_weighfile(){
+bool load_weights(){
+#ifdef verbose
+	cout << left << setw(SPACING_DEFAULT) << "- loading weights...";
+#endif
 	string filename = DIRECTORY_MAIN "/" FILENAME_WEIGHTS;
 	ifstream file;
 	file.open(filename, ios::in);
@@ -639,19 +605,19 @@ bool load_weighfile(){
 	string str_date;
 	float W;
 	while(file >> str_date >> W){
-		//sscanf(str_date.c_str(), "%2hu/%2hu/%4hu", &date.day, &date.month, &date.year);
 		weight_map.insert( {str_date, W});
 	}
 	file.close();
+	cout << OK;
 	return true;
 }
 
-bool save_weighfile(){
+bool save_weights(){
 	string filename = DIRECTORY_MAIN "/" FILENAME_WEIGHTS;
 	ofstream file;
 	file.open(filename, ios::out);
 	if(!file.is_open()){
-		cout << ERROR << FORMAT_ERROR << "unable to open '" << filename << "'" << ENDL;
+		cout << ERROR FORMAT_ERROR "unable to open '" << filename << "'" ENDL;
 		return false;
 	}
 	for(pair<string, float> weight : weight_map){
@@ -664,22 +630,16 @@ bool save_weighfile(){
 // show
 void print_profile(){
 	string target = to_string(profile.target_macros[0]) + "-" + to_string(profile.target_macros[1]) + "-" + to_string(profile.target_macros[2]);
+	cout << fixed;
+	cout.precision(1);
 	cout << FORMAT_TAG << left << setw(15) << "age:" << FORMAT_DATA << right << setw(15) << get_age(profile.birth) << ENDL;
 	cout << FORMAT_TAG << left << setw(15) << "height (cm):" << FORMAT_DATA << right << setw(15) << profile.height << ENDL;
 	cout << FORMAT_TAG << left << setw(15) << "weight (kg):" << FORMAT_DATA << right << setw(15) << profile.weight << ENDL;
 	cout << FORMAT_TAG << left << setw(15) << "sex:" << FORMAT_DATA << right << setw(15) << profile.S << ENDL;
 	cout << FORMAT_TAG << left << setw(15) << "macros:" << FORMAT_DATA << right << setw(15) << target << ENDL;
-	cout << FORMAT_TAG << left << setw(15) << "activity:" << FORMAT_DATA << setprecision(2) << right << setw(15) << profile.M << ENDL;
+	cout << FORMAT_TAG << left << setw(15) << "activity:" << FORMAT_DATA << setprecision(2) << right << setw(15) << profile.A << ENDL;
 	cout << FORMAT_TAG << left << setw(15) << "BMR:" << FORMAT_DATA << right << setw(15) << get_BMR() << ENDL;
 	cout << FORMAT_TAG << left << setw(15) << "TDEE:" << FORMAT_DATA << right << setw(15) << get_TDEE() << ENDL;
-}
-
-void print_weights(){
-	string date_format = TAB TAB BOLD COLOR_DATE COLOR_TABLE_BG;
-	string weight_format = COLOR_PROFILE COLOR_TABLE_BG;
-	for(pair<string, float> weight : weight_map){
-		cout << left << setw(SPACING_DEFAULT) << weight.first << setprecision(1) << weight.second << ENDL;
-	}
 }
 
 void print_streak(){
@@ -687,7 +647,7 @@ void print_streak(){
 	for(us streak = 0;;streak++){
 		date = get_previous_day(date);
 		if(day_exists(date)) continue;
-		cout << BOLD << "- current streak: " << COLOR_SYNTAX << streak << " days!" << ENDL;
+		cout << BOLD "- current streak: " COLOR_SYNTAX << streak << " days!" ENDL;
 		return;
 	}
 }
@@ -724,7 +684,7 @@ us get_BMR(){
 }
 
 us get_TDEE(){
-	return (us) (get_BMR() * profile.M);
+	return (us) (get_BMR() * profile.A);
 }
 /*
  string extract(string source, string start, string end){
@@ -751,7 +711,7 @@ string extract(string source, string start, string end){
 }
 
 void exit_program(){
-	cout << "> stopping [" << COLOR_FAIL << BOLD << "DietTracker v1.0" << RESET << "]" << ENDL;
+	cout << "> stopping [" COLOR_FAIL BOLD "DietTracker v1.0" RESET "]" ENDL;
 }
 
 void signal_handler(int signal){

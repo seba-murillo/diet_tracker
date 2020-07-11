@@ -20,7 +20,6 @@ using namespace std;
 class Day{
 private:
 	void load();
-	//bool loaded = false;
 	map<Food*, float> day_food_map;
 	Date date;
 public:

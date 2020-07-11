@@ -25,9 +25,9 @@ using namespace std;
 struct profile_structure{
 	Date birth;
 	us height;
-	us weight;
 	char S;
-	float M;
+	float weight;
+	float A;
 	us target_macros[3];
 };
 

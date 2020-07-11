@@ -12,6 +12,7 @@
 
 using namespace std;
 
+
 bool is_leapyear(us year){
 	if(year % 400 == 0) return true;
 	if(year % 100 == 0) return false;
@@ -86,6 +87,12 @@ Date get_next_day(Date date){
 	return result;
 }
 
+Date add_days(Date date, short days){
+	if(days == 0) return date;
+	if(days > 0) return add_days(get_next_day(date), days - 1);
+	return add_days(get_previous_day(date), days + 1);
+}
+
 Date get_today(){
 	Date result;
 	time_t now;
@@ -98,7 +105,7 @@ Date get_today(){
 }
 
 us get_age(Date birth){
-	if(!isValidDate(birth)) return 0;
+	if(!is_valid_date(birth)) return 0;
 	struct tm struct_B;
 	struct_B.tm_sec = 0;
 	struct_B.tm_min = 0;
@@ -117,7 +124,7 @@ us get_age(Date birth){
 	return (us) stoi(str);
 }
 
-bool isValidDate(us day, us month, us year){
+bool is_valid_date(us day, us month, us year){
 	if(!(year >= 1900 && year <= 2200)) return false;
 	if(day < 1 || day > 31) return false;
 	if(month == 2){
@@ -129,7 +136,7 @@ bool isValidDate(us day, us month, us year){
 	return true;
 }
 
-bool isValidDate(Date date){
-	return isValidDate(date.day, date.month, date.year);
+bool is_valid_date(Date date){
+	return is_valid_date(date.day, date.month, date.year);
 }
 
