@@ -8,8 +8,9 @@
 #include <iostream>
 #include <iomanip>
 #include <fstream>
-#include "Screen.h"
-#include "Day.h"
+
+#include "day.h"
+#include "screen.h"
 
 #define TABLE_SPACING_NAME		25
 #define TABLE_SPACING_AMOUNT	10
@@ -19,6 +20,19 @@ using namespace std;
 
 string get_day_filename(Date date);
 
+Day::Day(us day, us month, us year){
+	this->date.day = day;
+	this->date.month = month;
+	this->date.year = year;
+	load();
+}
+
+Day::Day(Date date){
+	this->date.day = date.day;
+	this->date.month = date.month;
+	this->date.year = date.year;
+	load();
+}
 void Day::load(){
 	string filename = string(DIRECTORY_MAIN "/" DIRECTORY_DAYS "/") + get_day_filename(this->date);
 	ifstream file;
@@ -54,20 +68,6 @@ void Day::save(){
 	}
 	file << "}";
 	file.close();
-}
-
-Day::Day(us day, us month, us year){
-	this->date.day = day;
-	this->date.month = month;
-	this->date.year = year;
-	load();
-}
-
-Day::Day(Date date){
-	this->date.day = date.day;
-	this->date.month = date.month;
-	this->date.year = date.year;
-	load();
 }
 
 bool Day::add_food(Food* food, float amount){

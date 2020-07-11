@@ -9,18 +9,20 @@
 #define COMMON_H_
 
 #include <string>
-#include "Date.h"
 
+#include "date.h"
+
+//#define debug		1
 #define verbose		1
-#define FORCE_SPREADSHEET	1
+
 #define INEX		-1
 
-#define DIRECTORY_DAYS		"days"
 #define DIRECTORY_MAIN		"DietTracker"
-
-typedef unsigned short us;
+#define DIRECTORY_DAYS		"days"
 
 using namespace std;
+
+typedef unsigned short us;
 
 struct profile_structure{
 	Date birth;

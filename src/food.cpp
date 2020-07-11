@@ -5,21 +5,21 @@
  *      Author: seba
  */
 
+#include "food.h"
+
 #include <iostream>
 #include <iomanip>
 #include <map>
-#include "Food.h"
-#include "Screen.h"
+
+#include "screen.h"
 
 using namespace std;
 
 map<string, Food*> food_map;
 map<string, Food*> alias_map;
 
-
 Food::Food(string name, string alias, string unit, float serving, float kcal, float C, float F, float P){
 	this->name = name;
-	this->alias = alias;
 	this->unit = unit;
 	this->serving = serving;
 	this->C = C;
@@ -27,15 +27,18 @@ Food::Food(string name, string alias, string unit, float serving, float kcal, fl
 	this->P = P;
 	this->kcal = ((C + P) * 4) + F * 9;
 	if(kcal) this->kcal = kcal;
-	food_map.insert({name, this});
-	if(alias != EMPTY_ALIAS) alias_map.insert( {alias, this});
+	food_map[name] = this;
+	if(!alias.empty()){
+		this->alias = alias;
+		alias_map[alias] = this;
+	}
 }
 
 void Food::print(){
 	cout << fixed;
 	cout.precision(1);
 	cout << BOLD "- nutritional info of '" << this->name << "':" ENDL;
-	if(this->alias != EMPTY_ALIAS){
+	if(!alias.empty()){
 		cout << FORMAT_TAG << left << setw(10) << "alias:";
 		cout << FORMAT_DATA << right << setw(15) << this->alias << ENDL;
 	}
@@ -62,6 +65,11 @@ Food* Food::find_by_alias(string foodname){
 }
 
 void Food::print_all(){
+	if(food_map.empty()){
+		cout << BOLD "> no foods were registered" ENDL;
+		return;
+	}
+	cout << BOLD "> printing ALL foods:" ENDL;
 	for(auto food : food_map){
 		food.second->print();
 	}

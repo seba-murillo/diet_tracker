@@ -7,11 +7,10 @@
 
 #include <ctime>
 #include <string>
-#include "Date.h"
 #include "common.h"
+#include "date.h"
 
 using namespace std;
-
 
 bool is_leapyear(us year){
 	if(year % 400 == 0) return true;
@@ -130,7 +129,8 @@ bool is_valid_date(us day, us month, us year){
 	if(month == 2){
 		if(is_leapyear(year)){ // leap year
 			if(day > 29) return false;
-		}else if(day > 28) return false;
+		}
+		else if(day > 28) return false;
 	}
 	if(month % 2 == 0 && day > 30) return false;
 	return true;

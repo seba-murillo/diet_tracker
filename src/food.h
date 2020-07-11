@@ -8,12 +8,11 @@
 #ifndef FOOD_H_
 #define FOOD_H_
 
-#define MAX_FOODNAME_SIZE	50
-#define EMPTY_ALIAS 		"<none>"
-
 #include <string>
 #include <list>
 #include <map>
+
+#define MAX_FOODNAME_SIZE	50
 
 using namespace std;
 
@@ -38,8 +37,6 @@ public:
 
 extern map<string, Food*> food_map;
 extern map<string, Food*> alias_map;
-
-
 
 namespace std {
 	template<> struct hash<Food> {

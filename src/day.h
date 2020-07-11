@@ -10,17 +10,17 @@
 
 #include <ctime>
 #include <string>
-#include <map>
+#include <unordered_map>
 #include "common.h"
-#include "Food.h"
-#include "Date.h"
+#include "date.h"
+#include "food.h"
 
 using namespace std;
 
 class Day{
 private:
 	void load();
-	map<Food*, float> day_food_map;
+	unordered_map<Food*, float> day_food_map;
 	Date date;
 public:
 	Day(us day, us month, us year);

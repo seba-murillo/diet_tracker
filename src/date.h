@@ -10,7 +10,7 @@
 
 typedef unsigned short us;
 
-typedef struct date_structure {
+typedef struct date_structure{
 	us day;
 	us month;
 	us year;
@@ -26,6 +26,5 @@ bool is_valid_date(Date date);
 bool is_leapyear(us year);
 
 //double get_time_since(Date date);
-
 
 #endif /* DATE_H_ */
