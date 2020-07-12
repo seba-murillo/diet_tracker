@@ -35,6 +35,6 @@ public:
 	string get_name();
 };
 
-bool day_exists(Date date);
+//bool day_exists(Date date);
 
 #endif /* DAY_H_ */

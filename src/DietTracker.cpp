@@ -45,14 +45,12 @@ using namespace std;
 
 #define DEFAULT_DAYS		7
 
-// TODO
-// measured TDEE
-// create profile input checking + CPP parsing
-// make foodlist unordered
-
 us get_BMR();
 us get_TDEE();
+/*
 us get_average_kcals(Date date, us days);
+us get_average_kcals(Date from, Date to);
+*/
 bool load_foods();
 bool load_profile();
 bool load_weights();
@@ -99,6 +97,7 @@ int main(int argc, char** argv){
 	if(!load_foods()) exit(EXIT_FAILURE);
 	if(!load_profile()) create_profile();
 	load_weights();
+	print_streak();
 	// load today
 	selected_day = new Day(get_today());
 	selected_day->print();
@@ -134,7 +133,7 @@ us get_BMR(){
 us get_TDEE(){
 	return (us) (get_BMR() * profile.A);
 }
-
+/*
 us get_average_kcals(Date date, us days){
 	double kcal = 0;
 	us day;
@@ -146,6 +145,22 @@ us get_average_kcals(Date date, us days){
 	}
 	return (us) (kcal / day);
 }
+
+us get_average_kcals(Date from, Date to){
+	if(from > to) return 0;
+	double total = 0;
+	us days = 0;
+	while(true){
+		if(from == to) break;
+		Day day = Day(from);
+		float kcal = day.get_kcals();
+		if(kcal > 0) total += kcal;
+		days++;
+
+	}
+	return (us) (total / days);
+}
+*/
 
 bool load_foods(){
 #ifdef verbose
@@ -188,7 +203,6 @@ bool load_foods(){
 		if((pos[1])[0] != '/') pos[1] = strstr(pos[0], TAG_ROW_END);
 		memset(row, 0, sizeof(row));
 		strncpy(row, pos[0], pos[1] - pos[0]);
-		//cout << "row[" << ROW_COUNT++ << "]: " << row << endl;
 		if(strstr(row, TAG_INDEX_NAME) != NULL) continue; // check row is not index
 		if(strstr(row, TAG_TEXT_START) == NULL) continue; // check row is not "empty"
 		// process row
@@ -319,11 +333,10 @@ bool load_weights(){
 	ifstream file;
 	file.open(filename, ios::in);
 	if(!file.is_open()) return false;
-	//struct date_structure date;
-	string str_date;
+	string str;
 	float W;
-	while(file >> str_date >> W){
-		weight_map.insert( {str_date, W});
+	while(file >> str >> W){
+		weight_map.insert( {str, W});
 	}
 	file.close();
 	cout << OK;
@@ -394,7 +407,7 @@ void print_streak(){
 	Date date = get_today();
 	for(us streak = 0;;streak++){
 		date--;
-		if(day_exists(date)) continue;
+		if(Day(date).get_kcals() > 0) continue;
 		cout << BOLD "- current streak: " COLOR_SYNTAX << streak << " days!" ENDL;
 		return;
 	}
@@ -556,7 +569,6 @@ void load_day(Date day){
 	selected_day->save();
 	delete (selected_day);
 	selected_day = new Day(day);
-	//cout << "- loaded " BOLD COLOR_DAY << selected_day->get_name() << RESET ":" ENDL;
 	selected_day->print();
 }
 
@@ -657,26 +669,12 @@ void command_weight(float weight){
 	cout << "'s weight to " COLOR_WEIGHT << weight << ENDL;
 	save_weights();
 }
-/*
-us get_average_kcals2(Date from, Date to){
-	if(from > to) return 0;
-	double kcal = 0;
-	us day;
-	for(day = 1;day <= days;day++){
-		if(!day_exists(date)) break;
-		Day D = Day(date.day, date.month, date.year);
-		kcal += D.get_kcals();
-		date--;
-	}
-	return (us) (kcal / day);
-}*/
 
 void command_average(us days){
 	if(days < 2){
 		cout << ERROR FORMAT_ERROR "invalid days" ENDL;
 		return;
 	}
-	//Date date = add_days(get_today(), -1 * days);
 	Date date = get_today() - days;
 	double total = 0;
 	us valid_days = 0;
@@ -699,20 +697,19 @@ void command_average(us days){
 
 void command_last(us days){
 	if(days < 2){
-		cout << ERROR FORMAT_ERROR "invalid days" ENDL;
+		cout << ERROR FORMAT_ERROR "invalid amount of days" ENDL;
 		return;
 	}
 	string FORMAT_DATE = TAB BOLD COLOR_DATE COLOR_TABLE_BG;
 	string FORMAT_KCAL = COLOR_AMOUNT COLOR_TABLE_BG;
-	//Date date = add_days(get_today(), -1 * days);
 	Date date = get_today() - days;
-	cout << "> last " COLOR_AMOUNT << days << RESET " days:" ENDL;
+	cout << "> last " COLOR_AMOUNT BOLD << days << RESET " days:" ENDL;
 	for(int i = 0;i < days;i++){
 		Day day = Day(date);
 		float kcals = day.get_kcals();
 		cout << FORMAT_DATE << left << setw(20) << day.get_name();
-		if(kcals > 0) cout << FORMAT_KCAL << right << setw(5) << day.get_kcals() << ENDL;
-		else cout << FORMAT_KCAL << right << setw(5) << "no info" ENDL;
+		if(kcals > 0) cout << FORMAT_KCAL << right << setw(8) << day.get_kcals() << ENDL;
+		else cout << FORMAT_KCAL << right << setw(8) << "no info" << ENDL;
 		date++;
 	}
 }

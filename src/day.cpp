@@ -194,7 +194,7 @@ string get_day_filename(Date date){
 	sprintf(str, "%04d_%02d_%02d", date.year, date.month, date.day);
 	return string(str);
 }
-
+/*
 bool day_exists(Date date){
 	string filename = get_day_filename(date);
 	ifstream file;
@@ -203,4 +203,4 @@ bool day_exists(Date date){
 	file.close();
 	return true;
 }
-
+*/
