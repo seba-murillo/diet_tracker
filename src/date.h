@@ -19,12 +19,14 @@ typedef struct date_structure{
 } Date;
 
 // operators
-inline bool operator>(const Date& date1, const Date& date2);
-inline bool operator<=(const Date& date1, const Date& date2);
-inline bool operator>=(const Date& date1, const Date& date2);
-inline bool operator==(const Date& date1, const Date& date2);
-inline bool operator!=(const Date& date1, const Date& date2);
+bool operator<(const Date& date1, const Date& date2);
+bool operator>(const Date& date1, const Date& date2);
+bool operator<=(const Date& date1, const Date& date2);
+bool operator>=(const Date& date1, const Date& date2);
+bool operator==(const Date& date1, const Date& date2);
+bool operator!=(const Date& date1, const Date& date2);
 std::ostream& operator<<(std::ostream& stream, const Date& date);
+std::istream& operator>>(std::istream& is, Date& obj);
 Date& operator--(Date& date);
 Date operator--(Date& date, int);
 Date& operator++(Date& date);

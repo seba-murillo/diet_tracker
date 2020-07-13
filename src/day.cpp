@@ -38,12 +38,18 @@ void Day::load(){
 	ifstream file;
 	file.open(filename, ios::in);
 	if(!file.is_open()) return;
-	string line, name;
+	string name, tmp, dump_s;
 	float amount;
-	while(getline(file, line)){
-		if(line == "{" || line == "}") continue;
-		name = extract(line, "\"", "\"");
-		amount = stod(extract(line, ": ", ","));
+	char dump_c;
+	file >> dump_c; // dump '{'
+	while(file >> name){
+		//find_first_of (const char* s, size_t pos = 0) const;
+		while(name.find_first_of('"', 1) == string::npos){
+			file >> tmp;
+			name += " " + tmp;
+		}
+		name = name.substr(1, name.length() - 3);
+		file >> amount >> dump_s;
 		Food* food = Food::find_food(name);
 		if(food == nullptr){
 			cout << TAB TAB COLOR_SYNTAX "WARNING: '" << name << "' (" << amount << ") not found in database, skipping..." ENDL;
@@ -55,6 +61,7 @@ void Day::load(){
 }
 
 void Day::save(){
+	if(day_food_map.size() == 0) return;
 	string filename = string(DIRECTORY_MAIN "/" DIRECTORY_DAYS "/") + get_day_filename(this->date);
 	ofstream file;
 	file.open(filename, ios::out);
@@ -162,9 +169,9 @@ void Day::print(){
 	cout << right << setw(TABLE_SPACING_NUMBERS) << table_total[3];
 	cout << ENDL;
 	// print TARGET
-	cout << TAB TAB COLOR_TABLE_BG COLOR_TABLE_TARGET BOLD;
+	cout << TAB TAB COLOR_TABLE_BG COLOR_TABLE_TOTAL BOLD;
 	cout << left << setw(TABLE_SPACING_NAME) << "TARGET";
-	cout << left << setw(TABLE_SPACING_AMOUNT) << "";
+	cout << left << setw(TABLE_SPACING_AMOUNT) << "" << COLOR_TABLE_TARGET;
 
 	cout << right << setw(TABLE_SPACING_NUMBERS) << target_kcal;
 	cout << right << setw(TABLE_SPACING_NUMBERS) << profile.target_macros[0];
@@ -184,6 +191,10 @@ void Day::print(){
 }
 
 string Day::get_name(){
+	Date today = get_today();
+	if(date == today) return string("today");
+	if(date == (today - 1)) return string("yesterday");
+	if(date == (today + 1)) return string("tomorrow");
 	char str[20];
 	sprintf(str, "%02d/%02d/%04d", date.day, date.month, date.year);
 	return string(str);
@@ -194,13 +205,3 @@ string get_day_filename(Date date){
 	sprintf(str, "%04d_%02d_%02d", date.year, date.month, date.day);
 	return string(str);
 }
-/*
-bool day_exists(Date date){
-	string filename = get_day_filename(date);
-	ifstream file;
-	file.open(filename, ios::in);
-	if(!file.is_open()) return false;
-	file.close();
-	return true;
-}
-*/

@@ -27,6 +27,9 @@
 
 using namespace std;
 
+// TODO
+// measured TDEE
+
 // file defines
 #define FILENAME_PROFILE 			".profile"
 #define FILENAME_WEIGHTS			".weights"
@@ -43,14 +46,12 @@ using namespace std;
 #define TAG_TEXT_END				"</text:p>"
 #define TAG_INDEX_NAME				"<text:p>name</text:p>"
 
-#define DEFAULT_DAYS		7
+#define DEFAULT_INPUT_DAYS		7
+#define KCAL_PER_KG				7700
 
 us get_BMR();
 us get_TDEE();
-/*
-us get_average_kcals(Date date, us days);
-us get_average_kcals(Date from, Date to);
-*/
+us measure_TDEE();
 bool load_foods();
 bool load_profile();
 bool load_weights();
@@ -75,9 +76,8 @@ void command_average(us days);
 void command_last(us days);
 void command_help();
 void command_show();
-string extract(string source, string start, string end);
 
-map<string, float> weight_map;
+map<Date, float> weight_map;
 struct profile_structure profile;
 Day* selected_day;
 
@@ -131,36 +131,36 @@ us get_BMR(){
 }
 
 us get_TDEE(){
+	us TDEE;
+	if((TDEE = measure_TDEE()) != 0) return TDEE;
 	return (us) (get_BMR() * profile.A);
 }
-/*
-us get_average_kcals(Date date, us days){
-	double kcal = 0;
-	us day;
-	for(day = 1;day <= days;day++){
-		if(!day_exists(date)) break;
-		Day D = Day(date.day, date.month, date.year);
-		kcal += D.get_kcals();
-		date--;
-	}
-	return (us) (kcal / day);
-}
 
-us get_average_kcals(Date from, Date to){
-	if(from > to) return 0;
+us measure_TDEE(){
+	if(weight_map.size() < 2) return 0;
+	auto last_date = weight_map.rbegin();
+	Date after = last_date->first;
+	if(after == get_today()){ // do NOT use current day for calculation since it might not have all kcals registered yet
+		if(weight_map.size() < 3) return 0;
+		after = (last_date++)->first;
+	}
+	float weight_difference = (last_date++)->second;
+	Date before = last_date->first;
+	weight_difference -= last_date->second;
+	us days;
 	double total = 0;
-	us days = 0;
-	while(true){
-		if(from == to) break;
-		Day day = Day(from);
-		float kcal = day.get_kcals();
-		if(kcal > 0) total += kcal;
-		days++;
-
+	float kcal;
+	for(days = 0;before <= after;before++){
+		Day day = Day(before);
+		if((kcal = day.get_kcals()) > 0){
+			total += kcal;
+			days++;
+		}
+		if(days > 60) return 0; // max days
 	}
-	return (us) (total / days);
+	if(days < 5) return 0; // min days
+	return (us) ((total - (weight_difference * KCAL_PER_KG)) / days);
 }
-*/
 
 bool load_foods(){
 #ifdef verbose
@@ -298,26 +298,17 @@ bool load_profile(){
 		cout << FAIL;
 		return false;
 	}
-	string tmp;
-	file >> tmp >> tmp >> tmp;
-	tmp[tmp.find("\"")] = ' ';
-	tmp[tmp.find("\"")] = ' ';
-	tmp[tmp.find(",")] = ' ';
-	stringstream stream(tmp);
-	string birth[3];
-	getline(stream, birth[0], '/');
-	getline(stream, birth[1], '/');
-	getline(stream, birth[2], '/');
-	profile.birth.day = stoi(birth[0]);
-	profile.birth.month = stoi(birth[1]);
-	profile.birth.year = stoi(birth[2]);
-	file >> tmp >> profile.height >> tmp;
-	file >> tmp >> profile.weight >> tmp;
-	file >> tmp >> profile.S >> tmp;
-	file >> tmp >> profile.A >> tmp;
-	file >> tmp >> profile.target_macros[0] >> tmp;
-	file >> tmp >> profile.target_macros[1] >> tmp;
-	file >> tmp >> profile.target_macros[2];
+	string dump_string;
+	char dump_char;
+	file >> dump_string >> dump_string; // {, "birthdate"
+	file >> dump_char >> profile.birth >> dump_string; // ", DD/MM/YYYY, "
+	file >> dump_string >> profile.height >> dump_string;
+	//file >> dump_string >> profile.weight >> dump_string;
+	file >> dump_string >> profile.S >> dump_string;
+	file >> dump_string >> profile.A >> dump_string;
+	file >> dump_string >> profile.target_macros[0] >> dump_string;
+	file >> dump_string >> profile.target_macros[1] >> dump_string;
+	file >> dump_string >> profile.target_macros[2];
 	file.close();
 #ifdef verbose
 	cout << OK;
@@ -333,10 +324,11 @@ bool load_weights(){
 	ifstream file;
 	file.open(filename, ios::in);
 	if(!file.is_open()) return false;
-	string str;
+	Date date;
 	float W;
-	while(file >> str >> W){
-		weight_map.insert( {str, W});
+	while(file >> date >> W){
+		weight_map[date] = W;
+		profile.weight = W;
 	}
 	file.close();
 	cout << OK;
@@ -352,9 +344,9 @@ bool save_profile(){
 		return false;
 	}
 	file << "{" << endl;
-	file << "\"birthdate\": \"" << profile.birth.day << "/" << profile.birth.month << "/" << profile.birth.year << "\"," << endl;
+	file << "\"birthdate\": \"" << profile.birth << "\"," << endl;
 	file << "\"height\": " << profile.height << ", " << endl;
-	file << "\"weight\": " << profile.weight << ", " << endl;
+	//file << "\"weight\": " << profile.weight << ", " << endl;
 	file << "\"sex\": " << profile.S << ", " << endl;
 	file << "\"activity\": " << profile.A << ", " << endl;
 	file << "\"target_C\": " << profile.target_macros[0] << ", " << endl;
@@ -373,8 +365,8 @@ bool save_weights(){
 		cout << ERROR FORMAT_ERROR "unable to open '" << filename << "'" ENDL;
 		return false;
 	}
-	for(pair<string, float> weight : weight_map){
-		file << weight.first << "\t" << weight.second << endl;
+	for(auto weight : weight_map){
+		file << weight.first << TAB << weight.second << endl;
 	}
 	file.close();
 	return true;
@@ -398,8 +390,10 @@ void print_weights(){
 	string date_format = TAB TAB BOLD COLOR_DATE COLOR_TABLE_BG;
 	string weight_format = COLOR_WEIGHT COLOR_TABLE_BG;
 	for(auto row : weight_map){
-		cout << date_format << left << setw(20) << row.first << RESET;
-		cout << weight_format << setprecision(1) << row.second << ENDL;
+		cout << date_format << row.first << setw(8) << " " << RESET;
+		cout << fixed;
+		cout.precision(1);
+		cout << weight_format << setw(8) << row.second << " kg" << ENDL;
 	}
 }
 
@@ -415,43 +409,69 @@ void print_streak(){
 
 void create_profile(){
 	cout << TAB COLOR_HELP BOLD "> creating new profile..." ENDL;
-	string input;
 	while(true){
 		cout << TAB "1. enter your birth date (dd/mm/yyyy): ";
-		cin >> input;
-		sscanf(input.c_str(), "%2hu/%2hu/%4hu", &profile.birth.day, &profile.birth.month, &profile.birth.year);
-		if(is_valid_date(profile.birth.day, profile.birth.month, profile.birth.year)) break;
+		cin >> profile.birth;
+		if(!is_valid_date(profile.birth)){
+			cout << ERROR FORMAT_ERROR "invalid date" ENDL;
+			continue;
+		}
+		break;
 	}
 	while(true){
 		cout << TAB "2. enter your height (cm): ";
-		cin >> input;
-		sscanf(input.c_str(), "%hu", &profile.height);
-		if(profile.height > 100 && profile.height < 250) break;
+		cin >> profile.height;
+		if(profile.height < 100 || profile.height > 250){
+			cout << ERROR FORMAT_ERROR "invalid height - must be between 100 cm and 250 cm" ENDL;
+			continue;
+		}
+		break;
 	}
 	while(true){
 		cout << TAB "3. enter your weight (kg): ";
-		cin >> input;
-		sscanf(input.c_str(), "%f", &profile.weight);
-		if(profile.weight > 40 && profile.weight < 200) break;
+		cin >> profile.weight;
+		if(profile.weight < 40 || profile.weight > 200){
+			cout << ERROR FORMAT_ERROR "invalid weight - must be between 40 kg and 200 kg" ENDL;
+			continue;
+		}
+		weight_map[get_today()] = profile.weight;
+		save_weights();
+		break;
 	}
 	while(true){
 		cout << TAB "4. enter your sex ('M' or 'F'): ";
 		cin >> profile.S;
-		if(profile.S == 'M' || profile.S == 'F') break;
-	}
-	while(true){
-		cout << TAB "6. enter your target macros (C-F-P): ";
-		cin >> input;
-		sscanf(input.c_str(), "%hu-%hu-%hu", &profile.target_macros[0], &profile.target_macros[1], &profile.target_macros[2]);
+		if(profile.S != 'M' && profile.S != 'F'){
+			cout << ERROR FORMAT_ERROR "invalid sex - use 'M' of 'F'" ENDL;
+			continue;
+		}
 		break;
 	}
 	while(true){
-		cout << TAB "6. choose one: " ENDL;
-		cout << TAB TAB "A) sedentary: little to no exercise" ENDL;
-		cout << TAB TAB "B) lightly active: light exercise" ENDL;
-		cout << TAB TAB "C) moderately active: moderate exercise" ENDL;
-		cout << TAB TAB "D) very active: heavy exercise" ENDL;
-		cout << TAB TAB "E) extremely active: very heavy exercise" ENDL;
+		cout << TAB "6. enter your target macros (C-F-P): ";
+		char slash;
+		cin >> profile.target_macros[0] >> slash >> profile.target_macros[1] >> slash >> profile.target_macros[2];
+		if(profile.target_macros[0] > 1000){
+			cout << ERROR FORMAT_ERROR "invalid amount of carbohydrates - must be under 1000" ENDL;
+			continue;
+		}
+		if(profile.target_macros[1] > 500){
+			cout << ERROR FORMAT_ERROR "invalid amount of fats - must be under 500" ENDL;
+			continue;
+		}
+		if(profile.target_macros[2] > 1000){
+			cout << ERROR FORMAT_ERROR "invalid amount of protein - must be under 1000" ENDL;
+			continue;
+		}
+		break;
+	}
+	cout << TAB "6. choose one: " ENDL;
+	cout << TAB TAB "A) sedentary: little to no exercise" ENDL;
+	cout << TAB TAB "B) lightly active: light exercise" ENDL;
+	cout << TAB TAB "C) moderately active: moderate exercise" ENDL;
+	cout << TAB TAB "D) very active: heavy exercise" ENDL;
+	cout << TAB TAB "E) extremely active: very heavy exercise" ENDL;
+	while(true){
 		cout << TAB "- your choice: ";
 		char choice;
 		cin >> choice;
@@ -472,7 +492,11 @@ void create_profile(){
 				profile.A = 1.9;
 				break;
 		}
-		if(profile.A != 1.0) break;
+		if(choice < 'A' && choice > 'E'){
+			cout << ERROR FORMAT_ERROR "invalid choice - must be 'A', 'B', 'C', 'D' or 'E'" ENDL;
+			continue;
+		}
+		break;
 	}
 	if(!save_profile()) return;
 	cout << "> profile " BOLD COLOR_OK "created" ENDL;
@@ -488,7 +512,7 @@ void exit_program(){
 }
 
 void signal_handler(int signal){
-	cout << endl;
+	cout << ENDL;
 	exit_program();
 	_Exit(EXIT_SUCCESS);
 }
@@ -537,11 +561,11 @@ void process_command(string command){
 		command_weight(number);
 	}
 	else if(cmd == "last"){
-		if(number == INEX) number = DEFAULT_DAYS;
+		if(number == INEX) number = DEFAULT_INPUT_DAYS;
 		command_last((us) number);
 	}
 	else if(cmd == "average"){
-		if(number == INEX) number = DEFAULT_DAYS;
+		if(number == INEX) number = DEFAULT_INPUT_DAYS;
 		command_average((us) number);
 	}
 	else if(cmd == "profile"){
@@ -567,7 +591,7 @@ void process_command(string command){
 
 void load_day(Date day){
 	selected_day->save();
-	delete (selected_day);
+	delete selected_day;
 	selected_day = new Day(day);
 	selected_day->print();
 }
@@ -596,15 +620,10 @@ void command_load(string day){
 		load_day(++date);
 		return;
 	}
-	size_t pos;
-	while((pos = day.find('/')) != string::npos)
-		day[pos] = ' '; // remove '/'
+	cout << "command_load: " << day << endl;
 	Date date;
-	date.year = today.year;
 	stringstream stream(day);
-	stream >> date.day;
-	stream >> date.month;
-	stream >> date.year;
+	stream >> date;
 	if(date.year == 0) date.year = today.year;
 	if(!is_valid_date(date)){
 		cout << BOLD COLOR_SYNTAX "- invalid date" ENDL;
@@ -622,7 +641,6 @@ void command_add(string foodname, float amount){
 	cout << "- added " BOLD COLOR_AMOUNT << amount << " " << food->unit;
 	cout << RESET << " of '" BOLD COLOR_FOOD << foodname << RESET "'";
 	cout << " to " BOLD COLOR_DAY << selected_day->get_name() << RESET "'s foods" ENDL;
-	;
 }
 
 void command_set(string foodname, float amount){
@@ -660,13 +678,13 @@ void command_info(string foodname){
 }
 
 void command_weight(float weight){
-	if(weight < 30.0){
+	if(weight < 30.0 || weight > 250.0){
 		cout << ERROR FORMAT_ERROR "invalid weight" ENDL;
 		return;
 	}
-	weight_map.insert( {selected_day->get_name(), weight});
+	weight_map[selected_day->get_date()] = weight;
 	cout << "- set " BOLD COLOR_DAY << selected_day->get_name() << RESET;
-	cout << "'s weight to " COLOR_WEIGHT << weight << ENDL;
+	cout << "'s weight to " COLOR_WEIGHT << setprecision(1) << weight << ENDL;
 	save_weights();
 }
 
@@ -707,7 +725,7 @@ void command_last(us days){
 	for(int i = 0;i < days;i++){
 		Day day = Day(date);
 		float kcals = day.get_kcals();
-		cout << FORMAT_DATE << left << setw(20) << day.get_name();
+		cout << FORMAT_DATE << left << day.get_date() << setw(10) << " ";
 		if(kcals > 0) cout << FORMAT_KCAL << right << setw(8) << day.get_kcals() << ENDL;
 		else cout << FORMAT_KCAL << right << setw(8) << "no info" << ENDL;
 		date++;
@@ -735,15 +753,3 @@ void command_help(){
 void command_show(){
 	selected_day->print();
 }
-
-string extract(string source, string start, string end){
-	if(source.empty()) return string();
-	int pos1, pos2;
-	pos1 = source.find(start);
-	if(pos1 == -1) return string();
-	pos1 += start.length();
-	pos2 = (source.substr(pos1)).find(end);
-	if(pos2 == -1 || end.empty()) pos2 = source.length();
-	return source.substr(pos1, pos2);
-}
-

@@ -6,9 +6,10 @@
  */
 
 #include <ctime>
+#include <iomanip>
 #include "date.h"
 
-inline bool operator<(const Date& date1, const Date& date2){
+bool operator<(const Date& date1, const Date& date2){
 	if(date1.year < date2.year) return true;
 	if(date1.year > date2.year) return false;
 	if(date1.month < date2.month) return true;
@@ -17,28 +18,41 @@ inline bool operator<(const Date& date1, const Date& date2){
 	if(date1.day > date2.day) return false;
 	return false;
 }
-inline bool operator>(const Date& date1, const Date& date2){
+
+bool operator>(const Date& date1, const Date& date2){
 	return (date2 < date1);
 }
-inline bool operator<=(const Date& date1, const Date& date2){
+
+bool operator<=(const Date& date1, const Date& date2){
 	return !(date1 > date2);
 }
-inline bool operator>=(const Date& date1, const Date& date2){
+
+bool operator>=(const Date& date1, const Date& date2){
 	return !(date1 < date2);
 }
-inline bool operator==(const Date& date1, const Date& date2){
+
+bool operator==(const Date& date1, const Date& date2){
 	if(date1.year != date2.year) return false;
 	if(date1.month != date2.month) return false;
 	if(date1.day != date2.day) return false;
 	return true;
 }
-inline bool operator!=(const Date& date1, const Date& date2){
+
+bool operator!=(const Date& date1, const Date& date2){
 	return !(date1 == date2);
 }
 
 std::ostream& operator<<(std::ostream& stream, const Date& date){
-	stream << date.day << "/" << date.month << "/" << date.year;
+	stream << std::right << std::setfill('0') << std::setw(2) << date.day << "/";
+	stream << std::setfill('0') << std::setw(2) << date.month << "/";
+	stream << std::setfill('0') << std::setw(4) << date.year << std::setfill(' ');
 	return stream;
+}
+
+std::istream& operator>>(std::istream& is, Date& date){
+	char slash;
+	is >> date.day >> slash >> date.month >> slash >> date.year;
+	return is;
 }
 
 Date& operator--(Date& date){ // prefix
@@ -177,6 +191,7 @@ us get_age(Date birth){
 
 bool is_valid_date(us day, us month, us year){
 	if(!(year >= 1900 && year <= 2200)) return false;
+	if(month < 1 || month > 12) return false;
 	if(day < 1 || day > 31) return false;
 	if(month == 2){
 		if(is_leapyear(year)){ // leap year
