@@ -27,9 +27,6 @@
 
 using namespace std;
 
-// TODO
-// measured TDEE
-
 // file defines
 #define FILENAME_PROFILE 			".profile"
 #define FILENAME_WEIGHTS			".weights"
@@ -82,6 +79,7 @@ struct profile_structure profile;
 Day* selected_day;
 
 int main(int argc, char** argv){
+	cout << fixed;
 	cout << "> starting [" COLOR_FAIL BOLD "DietTracker v1.0" RESET "]" ENDL;
 	// setup signal handling
 	atexit(exit_program);
@@ -374,8 +372,7 @@ bool save_weights(){
 
 void print_profile(){
 	string target = to_string(profile.target_macros[0]) + "-" + to_string(profile.target_macros[1]) + "-" + to_string(profile.target_macros[2]);
-	cout << fixed;
-	cout.precision(1);
+	cout << setprecision(1);
 	cout << FORMAT_TAG << left << setw(15) << "age:" << FORMAT_DATA << right << setw(15) << get_age(profile.birth) << ENDL;
 	cout << FORMAT_TAG << left << setw(15) << "height (cm):" << FORMAT_DATA << right << setw(15) << profile.height << ENDL;
 	cout << FORMAT_TAG << left << setw(15) << "weight (kg):" << FORMAT_DATA << right << setw(15) << profile.weight << ENDL;
@@ -391,9 +388,7 @@ void print_weights(){
 	string weight_format = COLOR_WEIGHT COLOR_TABLE_BG;
 	for(auto row : weight_map){
 		cout << date_format << row.first << setw(8) << " " << RESET;
-		cout << fixed;
-		cout.precision(1);
-		cout << weight_format << setw(8) << row.second << " kg" << ENDL;
+		cout << weight_format << setw(8) << setprecision(1) << row.second << " kg" << ENDL;
 	}
 }
 
@@ -626,7 +621,7 @@ void command_load(string day){
 	stream >> date;
 	if(date.year == 0) date.year = today.year;
 	if(!is_valid_date(date)){
-		cout << BOLD COLOR_SYNTAX "- invalid date" ENDL;
+		cout << ERROR FORMAT_ERROR "invalid date - use 'load DD/MM' or 'load DD/MM/YYYY'" ENDL;
 		return;
 	}
 	load_day(date);
@@ -635,26 +630,30 @@ void command_load(string day){
 void command_add(string foodname, float amount){
 	Food* food = Food::find_food(foodname);
 	if(!selected_day->add_food(food, amount)){
-		cout << ERROR FORMAT_ERROR "unknown food '" << foodname << "'" ENDL;
+		cout << ERROR FORMAT_ERROR "unknown food " << foodname << ENDL;
 		return;
 	}
-	cout << "- added " BOLD COLOR_AMOUNT << amount << " " << food->unit;
-	cout << RESET << " of '" BOLD COLOR_FOOD << foodname << RESET "'";
+	cout << "- added " BOLD COLOR_AMOUNT << setprecision(1);
+	if(amount == (int) amount) cout << setprecision(0);
+	cout << amount << " " << food->unit;
+	cout << RESET << " of " BOLD COLOR_FOOD << food->name << RESET;
 	cout << " to " BOLD COLOR_DAY << selected_day->get_name() << RESET "'s foods" ENDL;
 }
 
 void command_set(string foodname, float amount){
 	Food* food = Food::find_food(foodname);
 	if(amount < 0.1){
-		cout << ERROR FORMAT_ERROR "cannot set '" << foodname << "' to a negative value" ENDL;
+		cout << ERROR FORMAT_ERROR "cannot set " << foodname << " to a negative value" ENDL;
 		return;
 	}
 	if(!selected_day->set_food(food, amount)){
 		cout << ERROR FORMAT_ERROR "'" << foodname << "' is not part of the day's foods" ENDL;
 		return;
 	}
-	cout << "- set '" BOLD COLOR_FOOD << foodname << RESET "'";
-	cout << " to " BOLD COLOR_AMOUNT << amount << " " << food->unit << RESET;
+	cout << "- set " BOLD COLOR_FOOD << food->name << RESET;
+	cout << " to " BOLD COLOR_AMOUNT << setprecision(1);
+	if(amount == (int) amount) cout << setprecision(0);
+	cout << amount << " " << food->unit << RESET;
 	cout << " on " BOLD COLOR_DAY << selected_day->get_name() << RESET "'s foods" ENDL;
 }
 
@@ -664,7 +663,7 @@ void command_del(string foodname){
 		cout << ERROR FORMAT_ERROR "'" << foodname << "' is not part of the day's foods" ENDL;
 		return;
 	}
-	cout << "- deleted '" BOLD COLOR_FOOD << foodname << RESET "'";
+	cout << "- deleted " BOLD COLOR_FOOD << food->name << RESET;
 	cout << " from " BOLD COLOR_DAY << selected_day->get_name() << RESET "'s foods" ENDL;
 }
 

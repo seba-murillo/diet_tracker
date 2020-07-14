@@ -61,8 +61,11 @@ void Day::load(){
 }
 
 void Day::save(){
-	if(day_food_map.size() == 0) return;
 	string filename = string(DIRECTORY_MAIN "/" DIRECTORY_DAYS "/") + get_day_filename(this->date);
+	if(day_food_map.size() == 0){
+		remove(filename.c_str());
+		return;
+	}
 	ofstream file;
 	file.open(filename, ios::out);
 	file << "{\n";
@@ -125,8 +128,6 @@ void Day::print(){
 	us table_total[] = {0, 0, 0, 0}; // {kcal, C, P ,F}
 	short table_left[] = {0, 0, 0, 0}; // {kcal, C, P ,F}
 	unsigned int count = 1;
-	cout << fixed;
-	cout.precision(0);
 	cout << TAB TAB COLOR_TABLE_BG UNDERLINE BOLD;
 	cout << left << setw(TABLE_SPACING_NAME) << "food";
 	cout << left << setw(TABLE_SPACING_AMOUNT) << "amount";
@@ -136,11 +137,15 @@ void Day::print(){
 	cout << right << setw(TABLE_SPACING_NUMBERS) << "P";
 	cout << ENDL;
 	for(auto map_row : day_food_map){
+		cout << setprecision(0);
 		cout << TAB TAB COLOR_TABLE_BG;
 		if(count++ == day_food_map.size()) cout << UNDERLINE;
 		Food* food = map_row.first;
 		float mult = map_row.second / food->serving;
-		string amount = "(" + to_string((us) map_row.second) + " " + food->unit + ")";
+		//string amount = "(" + to_string((us) map_row.second) + " " + food->unit + ")";
+		char amount[20];
+		sprintf(amount, "(%.1f %s)", map_row.second, (food->unit).c_str());
+		if(map_row.second == (int) map_row.second) sprintf(amount, "(%.0f %s)", map_row.second, (food->unit).c_str());
 		cout << left << setw(TABLE_SPACING_NAME) << food->name;
 		cout << left << setw(TABLE_SPACING_AMOUNT) << amount;
 		cout << right << setw(TABLE_SPACING_NUMBERS) << food->kcal * mult;
