@@ -49,10 +49,14 @@ std::ostream& operator<<(std::ostream& stream, const Date& date){
 	return stream;
 }
 
-std::istream& operator>>(std::istream& is, Date& date){
-	char slash;
-	is >> date.day >> slash >> date.month >> slash >> date.year;
-	return is;
+std::istream& operator>>(std::istream& stream, Date& date){
+	char slash = '/';
+	stream >> date.day;
+	if(stream.peek() == slash) stream >> slash;
+	stream >> date.month;
+	if(stream.peek() == slash) stream >> slash;
+	stream >> date.year;
+	return stream;
 }
 
 Date& operator--(Date& date){ // prefix
@@ -167,6 +171,14 @@ Date get_today(){
 	result.month = (*now_struct).tm_mon + 1;
 	result.year = (*now_struct).tm_year + 1900;
 	return result;
+}
+
+Date get_blank_date(){
+	Date date;
+	date.day = 0;
+	date.month = 0;
+	date.year = 0;
+	return date;
 }
 
 us get_age(Date birth){

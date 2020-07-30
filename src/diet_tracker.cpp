@@ -585,6 +585,10 @@ void process_command(string command){
 }
 
 void load_day(Date day){
+	if(selected_day != nullptr && day == selected_day->get_date()){
+		cout << COLOR_SYNTAX << "- " << day << " already loaded" << ENDL;
+		return;
+	}
 	selected_day->save();
 	delete selected_day;
 	selected_day = new Day(day);
@@ -615,8 +619,7 @@ void command_load(string day){
 		load_day(++date);
 		return;
 	}
-	cout << "command_load: " << day << endl;
-	Date date;
+	Date date = get_blank_date();
 	stringstream stream(day);
 	stream >> date;
 	if(date.year == 0) date.year = today.year;
@@ -718,15 +721,21 @@ void command_last(us days){
 		return;
 	}
 	string FORMAT_DATE = TAB BOLD COLOR_DATE COLOR_TABLE_BG;
-	string FORMAT_KCAL = COLOR_AMOUNT COLOR_TABLE_BG;
+	us target_kcal = (profile.target_macros[0] + profile.target_macros[2]) * 4 + profile.target_macros[1] * 9;
 	Date date = get_today() - days;
 	cout << "> last " COLOR_AMOUNT BOLD << days << RESET " days:" ENDL;
 	for(int i = 0;i < days;i++){
 		Day day = Day(date);
 		float kcals = day.get_kcals();
 		cout << FORMAT_DATE << left << day.get_date() << setw(10) << " ";
-		if(kcals > 0) cout << FORMAT_KCAL << right << setw(8) << day.get_kcals() << ENDL;
-		else cout << FORMAT_KCAL << right << setw(8) << "no info" << ENDL;
+		if(kcals > 0){
+			if(kcals <= target_kcal) cout << COLOR_OK;
+			else if(kcals <= target_kcal + 200) cout << COLOR_WARNING;
+			else cout << COLOR_FAIL;
+			cout << COLOR_TABLE_BG << right << setw(8) << day.get_kcals() << ENDL;
+
+		}
+		else cout << COLOR_TABLE_BG COLOR_AMOUNT << right << setw(8) << "no info" << ENDL;
 		date++;
 	}
 }

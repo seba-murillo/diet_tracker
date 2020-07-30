@@ -37,6 +37,7 @@ Date& operator-=(Date& date, int days);
 Date operator-(Date date1, int days);
 // functions
 Date get_today();
+Date get_blank_date();
 us get_age(Date birth);
 bool is_valid_date(us day, us month, us year);
 bool is_valid_date(Date date);

@@ -17,8 +17,9 @@
 #define TAB			"    "
 // formats
 //#define OK		"\u001B[1m[\u001B[32mOK\u001B[0m\u001B[1m]"
-#define COLOR_OK	"\u001B[32m" // green
-#define COLOR_FAIL	"\u001B[31m" // red
+#define COLOR_OK		"\u001B[32m" // green
+#define COLOR_WARNING	"\u001B[33m" // yellow
+#define COLOR_FAIL		"\u001B[31m" // red
 #define OK			BOLD "[" COLOR_OK "OK" RESET BOLD "]" ENDL
 #define FAIL		BOLD "[" COLOR_FAIL "FAIL" RESET BOLD "]" ENDL
 // colors
