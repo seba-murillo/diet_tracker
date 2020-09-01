@@ -78,7 +78,7 @@ Date& operator--(Date& date){ // prefix
 	}
 	if(date.month == 4 || date.month == 6 || date.month == 9 || date.month == 11){
 		date.day = 31;
-		date.month = 1;
+		date.month--;
 		return date;
 	}
 	date.day = 30;
@@ -144,9 +144,9 @@ Date& operator+=(Date& date, int days){
 	return date;
 }
 
-Date operator+(Date date1, int days){
-	date1 += days;
-	return date1;
+Date operator+(Date date, int days){
+	date += days;
+	return date;
 }
 
 Date& operator-=(Date& date, int days){
@@ -157,9 +157,9 @@ Date& operator-=(Date& date, int days){
 	return date;
 }
 
-Date operator-(Date date1, int days){
-	date1 -= days;
-	return date1;
+Date operator-(Date date, int days){
+	date -= days;
+	return date;
 }
 
 Date get_today(){

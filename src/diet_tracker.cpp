@@ -722,7 +722,7 @@ void command_last(us days){
 	}
 	string FORMAT_DATE = TAB BOLD COLOR_DATE COLOR_TABLE_BG;
 	us target_kcal = (profile.target_macros[0] + profile.target_macros[2]) * 4 + profile.target_macros[1] * 9;
-	Date date = get_today() - days;
+	Date date = get_today() - days + 1;
 	cout << "> last " COLOR_AMOUNT BOLD << days << RESET " days:" ENDL;
 	for(int i = 0;i < days;i++){
 		Day day = Day(date);
@@ -733,7 +733,6 @@ void command_last(us days){
 			else if(kcals <= target_kcal + 200) cout << COLOR_WARNING;
 			else cout << COLOR_FAIL;
 			cout << COLOR_TABLE_BG << right << setw(8) << day.get_kcals() << ENDL;
-
 		}
 		else cout << COLOR_TABLE_BG COLOR_AMOUNT << right << setw(8) << "no info" << ENDL;
 		date++;
