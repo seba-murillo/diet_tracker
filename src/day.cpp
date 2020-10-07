@@ -124,7 +124,7 @@ void Day::print(){
 		cout << TAB "no foods logged for " COLOR_DAY BOLD << this->get_name() << ENDL;
 		return;
 	}
-	cout << "> foods of " COLOR_DAY BOLD << this->get_name() << RESET ":" ENDL;
+	cout << "➤ foods of " COLOR_DAY BOLD << this->get_name() << RESET ":" ENDL;
 	us table_total[] = {0, 0, 0, 0}; // {kcal, C, P ,F}
 	short table_left[] = {0, 0, 0, 0}; // {kcal, C, P ,F}
 	unsigned int count = 1;

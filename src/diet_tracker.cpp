@@ -80,7 +80,7 @@ Day* selected_day;
 
 int main(int argc, char** argv){
 	cout << fixed;
-	cout << "> starting [" COLOR_FAIL BOLD "DietTracker v1.0" RESET "]" ENDL;
+	cout << "➤ starting [" COLOR_FAIL BOLD "DietTracker v1.0" RESET "]" ENDL;
 	// setup signal handling
 	atexit(exit_program);
 	struct sigaction action;
@@ -101,7 +101,7 @@ int main(int argc, char** argv){
 	selected_day->print();
 	// main loop
 	char* command;
-	while((command = readline("> ")) != nullptr){
+	while((command = readline("→ ")) != nullptr){
 		if(strlen(command) > 0) add_history(command);
 		if(strcmp(command, "exit") == 0 || strcmp(command, "quit") == 0 || strcmp(command, "q") == 0) break;
 		process_command(string(command));
@@ -494,7 +494,7 @@ void create_profile(){
 		break;
 	}
 	if(!save_profile()) return;
-	cout << "> profile " BOLD COLOR_OK "created" ENDL;
+	cout << "➤ profile " BOLD COLOR_OK "created" ENDL;
 }
 
 void init_files(){
@@ -503,7 +503,7 @@ void init_files(){
 }
 
 void exit_program(){
-	cout << "> stopping [" COLOR_FAIL BOLD "DietTracker v1.0" RESET "]" ENDL;
+	cout << "➤ stopping [" COLOR_FAIL BOLD "DietTracker v1.0" RESET "]" ENDL;
 }
 
 void signal_handler(int signal){
@@ -708,10 +708,10 @@ void command_average(us days){
 		date++;
 	}
 	if(valid_days == 0){
-		cout << "> " COLOR_SYNTAX "not enough" RESET " info to get average" ENDL;
+		cout << "➤ " COLOR_SYNTAX "not enough" RESET " info to get average" ENDL;
 		return;
 	}
-	cout << "> average over the last " COLOR_AMOUNT << valid_days << RESET " days: ";
+	cout << "➤ average over the last " COLOR_AMOUNT << valid_days << RESET " days: ";
 	cout << BOLD COLOR_AMOUNT << total / valid_days << RESET " kcal" ENDL;
 }
 
@@ -723,7 +723,7 @@ void command_last(us days){
 	string FORMAT_DATE = TAB BOLD COLOR_DATE COLOR_TABLE_BG;
 	us target_kcal = (profile.target_macros[0] + profile.target_macros[2]) * 4 + profile.target_macros[1] * 9;
 	Date date = get_today() - days;
-	cout << "> last " COLOR_AMOUNT BOLD << days << RESET " days:" ENDL;
+	cout << "➤ last " COLOR_AMOUNT BOLD << days << RESET " days:" ENDL;
 	for(int i = 0;i < days;i++){
 		Day day = Day(date);
 		float kcals = day.get_kcals();
