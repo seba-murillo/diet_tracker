@@ -70,13 +70,13 @@ Date& operator--(Date& date){ // prefix
 		date.year--;
 		return date;
 	}
-	if(date.month == 2){
+	if(date.month == 3){
 		if(is_leapyear(date.year)) date.day = 29;
 		else date.day = 28;
-		date.month = 1;
+		date.month = 2;
 		return date;
 	}
-	if(date.month == 4 || date.month == 6 || date.month == 9 || date.month == 11){
+	if(date.month == 2 || date.month == 4 || date.month == 6 || date.month == 8 || date.month == 9 || date.month == 11){
 		date.day = 31;
 		date.month--;
 		return date;
@@ -150,10 +150,14 @@ Date operator+(Date date, int days){
 }
 
 Date& operator-=(Date& date, int days){
-	if(days > 0) for(int i = 0;i < days;i++)
-		date--;
-	else for(int i = days;i < 0;i++)
-		date++;
+	if(days > 0){
+		for(int i = 0;i < days;i++)
+			date--;
+	}
+	else{
+		for(int i = 0;i < days;i++)
+			date++;
+	}
 	return date;
 }
 

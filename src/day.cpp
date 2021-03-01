@@ -197,9 +197,9 @@ void Day::print(){
 
 string Day::get_name(){
 	Date today = get_today();
-	if(date == today) return string("today");
-	if(date == (today - 1)) return string("yesterday");
-	if(date == (today + 1)) return string("tomorrow");
+	//if(date == today) return string("today");
+	//if(date == (today - 1)) return string("yesterday");
+	//if(date == (today + 1)) return string("tomorrow");
 	char str[20];
 	sprintf(str, "%02d/%02d/%04d", date.day, date.month, date.year);
 	return string(str);

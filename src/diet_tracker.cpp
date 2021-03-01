@@ -712,7 +712,7 @@ void command_average(us days){
 		return;
 	}
 	cout << "➤ average over the last " COLOR_AMOUNT << valid_days << RESET " days: ";
-	cout << BOLD COLOR_AMOUNT << total / valid_days << RESET " kcal" ENDL;
+	cout << BOLD COLOR_AMOUNT << (us) (total / valid_days) << RESET " kcal" ENDL;
 }
 
 void command_last(us days){
